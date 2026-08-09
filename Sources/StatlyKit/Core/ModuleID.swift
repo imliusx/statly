@@ -48,3 +48,16 @@ public enum LabelStyle: String, Codable, CaseIterable, Sendable {
         }
     }
 }
+
+/// 温度模块的数据来源，二选一。
+public enum TemperatureSource: String, Codable, CaseIterable, Sendable {
+    case cpu
+    case battery
+
+    public var displayName: String {
+        switch self {
+        case .cpu: return "CPU"
+        case .battery: return "电池"
+        }
+    }
+}

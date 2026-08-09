@@ -25,7 +25,13 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
         popover.animates = false
         popover.delegate = self
 
-        store.isTemperatureAvailable = samplers.isTemperatureAvailable
+        let sources = samplers.availableTemperatureSources
+        store.availableTemperatureSources = sources
+        // 存的来源本机不支持（比如换到了没有电池的机型）就回落到可用的那个
+        if !sources.isEmpty, !sources.contains(settings.temperatureSource),
+           let fallback = sources.sorted(by: { $0.rawValue < $1.rawValue }).first {
+            settings.temperatureSource = fallback
+        }
         rebuildStatusItems()
         bindSettings()
         observeScreenSleep()
@@ -36,9 +42,10 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
 
     private func restartScheduler() {
         let enabled = settings.enabledModules
+        let temperatureSource = settings.temperatureSource
         scheduler.handler = { [weak self] in
             guard let self else { return }
-            let snapshot = self.samplers.sample(enabled: enabled)
+            let snapshot = self.samplers.sample(enabled: enabled, temperatureSource: temperatureSource)
             DispatchQueue.main.async { self.apply(snapshot) }
         }
         scheduler.start(interval: settings.refreshInterval)
@@ -122,6 +129,19 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
         settings.$labelStyle.dropFirst()
             .sink { [weak self] _ in
                 DispatchQueue.main.async { self?.renderAll() }
+            }
+            .store(in: &cancellables)
+
+        settings.$temperatureSource.dropFirst()
+            .sink { [weak self] _ in
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    // 两种来源量的不是同一件事，旧曲线必须丢掉
+                    self.store.clearHistory(.temperature)
+                    self.lastSnapshot.temperature = nil
+                    self.restartScheduler()
+                    self.renderAll()
+                }
             }
             .store(in: &cancellables)
     }

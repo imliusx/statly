@@ -196,7 +196,7 @@ struct SettingsDetailView: View {
     @ViewBuilder
     private func modulePage(_ module: ModuleID) -> some View {
         let isLastEnabled = settings.enabledModules == [module]
-        let unsupported = module == .temperature && !store.isTemperatureAvailable
+        let unsupported = module == .temperature && store.availableTemperatureSources.isEmpty
 
         Section {
             Toggle("在状态栏显示", isOn: moduleBinding(module))
@@ -206,6 +206,25 @@ struct SettingsDetailView: View {
                 footnote("本机读不到温度传感器（多见于 Intel 机型，或系统更新改动了传感器接口）。")
             } else if isLastEnabled {
                 footnote("至少需要保留一个模块。")
+            }
+        }
+
+        if module == .temperature, !unsupported {
+            Section {
+                Picker("温度来源", selection: $settings.temperatureSource) {
+                    ForEach(TemperatureSource.allCases, id: \.self) { source in
+                        Text(source.displayName).tag(source)
+                    }
+                }
+                .disabled(store.availableTemperatureSources.count < 2)
+            } header: {
+                Text("来源")
+            } footer: {
+                if store.availableTemperatureSources.contains(.battery) {
+                    footnote("CPU 取晶粒传感器的最高值，反映负载；电池温度变化更平缓。切换来源会重置历史曲线。")
+                } else {
+                    footnote("本机没有电池温度传感器，通常见于台式机型。")
+                }
             }
         }
 
@@ -250,8 +269,8 @@ struct SettingsDetailView: View {
             ]
         case .temperature:
             return [
-                ("状态栏", "最高晶粒温度"),
-                ("悬停", "最高值、平均值与传感器个数"),
+                ("状态栏", "所选来源的最高温度"),
+                ("悬停", "来源、最高值、平均值与传感器个数"),
                 ("详情", "温度曲线与采样说明"),
             ]
         case .network:

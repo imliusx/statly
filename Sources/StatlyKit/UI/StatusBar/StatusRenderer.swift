@@ -75,7 +75,7 @@ enum StatusRenderer {
             // 量化到显示的整度：圆环角度与读数严格对应，亚度变化不重绘
             let rounded = temperature.celsius.rounded()
             let text = Format.temperature(rounded)
-            let tooltip = "\u{6e29}\u{5ea6} \(text) \u{b7} \u{5e73}\u{5747} \(Format.temperature(temperature.average))"
+            let tooltip = "\(temperature.source.displayName)\u{6e29}\u{5ea6} \(text) \u{b7} \u{5e73}\u{5747} \(Format.temperature(temperature.average))"
                 + " \u{b7} \(temperature.sensorCount) \u{4e2a}\u{4f20}\u{611f}\u{5668}"
             switch style {
             case .text:

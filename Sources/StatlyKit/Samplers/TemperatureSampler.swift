@@ -12,13 +12,19 @@ import IOKit
 /// 实测均匀取其中 4 个取最大值，与全量最大值平均只差 0.01°C（最大 1.4°C），
 /// 单次降到 3.6ms；再把采样间隔放宽到 5 秒（温度本就是慢变量），约 0.07% CPU。
 final class HIDTemperatureSensors {
-    /// 采样的传感器个数
-    private static let sensorLimit = 4
+    /// 每种来源最多采样的传感器个数。CPU 晶粒传感器多且分布在不同核心簇，取 4 个；
+    /// 电池只有一个物理电芯，多个条目读数几乎一致，取 2 个即可。
+    private static func sensorLimit(for source: TemperatureSource) -> Int {
+        switch source {
+        case .cpu: return 4
+        case .battery: return 2
+        }
+    }
 
     private let copyEvent: CopyEventFn
     private let getFloat: GetFloatFn
     private let field: Int32
-    private let services: [AnyObject]
+    private let services: [TemperatureSource: [AnyObject]]
     /// 必须持有 client：服务对象依赖它内部的锁，client 一旦释放，
     /// 后续 CopyEvent 会在已释放的 os_unfair_lock 上解锁而崩溃。
     private let client: AnyObject
@@ -56,7 +62,11 @@ final class HIDTemperatureSensors {
         func name(_ service: AnyObject) -> String {
             copyProperty(service, "Product" as CFString)?.takeRetainedValue() as? String ?? ""
         }
-        let selected = Self.selectSensors(allServices, name: name)
+        var selected: [TemperatureSource: [AnyObject]] = [:]
+        for source in TemperatureSource.allCases {
+            let picked = Self.selectSensors(allServices, name: name, for: source)
+            if !picked.isEmpty { selected[source] = picked }
+        }
         guard !selected.isEmpty else { return nil }
 
         self.copyEvent = copyEvent
@@ -69,29 +79,45 @@ final class HIDTemperatureSensors {
 
     private static let temperatureEventType: Int64 = 15
 
-    /// 优先取晶粒温度（tdie），均匀抽样以覆盖不同核心簇。
-    /// tcal 是校准参考值（恒定偏高）不是真实温度；电池与闪存温度另属别的部件，一并排除。
+    /// 按来源挑选传感器并均匀抽样。
+    ///
+    /// CPU：优先取晶粒温度（tdie），覆盖不同核心簇。tcal 是校准参考值（恒定偏高）
+    /// 不是真实温度，电池与闪存温度属于别的部件，一并排除。
+    /// 电池：只取名字含 battery 的传感器。
     static func selectSensors(
         _ services: [AnyObject],
-        name: (AnyObject) -> String
+        name: (AnyObject) -> String,
+        for source: TemperatureSource
     ) -> [AnyObject] {
-        let excluded = ["tcal", "battery", "NAND"]
-        let usable = services.filter { service in
-            let label = name(service)
-            return !excluded.contains { label.localizedCaseInsensitiveContains($0) }
+        let pool: [AnyObject]
+        switch source {
+        case .cpu:
+            let excluded = ["tcal", "battery", "NAND"]
+            let usable = services.filter { service in
+                let label = name(service)
+                return !excluded.contains { label.localizedCaseInsensitiveContains($0) }
+            }
+            let die = usable.filter { name($0).localizedCaseInsensitiveContains("tdie") }
+            pool = die.isEmpty ? usable : die
+        case .battery:
+            pool = services.filter { name($0).localizedCaseInsensitiveContains("battery") }
         }
-        let die = usable.filter { name($0).localizedCaseInsensitiveContains("tdie") }
-        let pool = (die.isEmpty ? usable : die).sorted { name($0) < name($1) }
-        guard pool.count > sensorLimit else { return pool }
-        let step = pool.count / sensorLimit
-        return stride(from: 0, to: pool.count, by: step).prefix(sensorLimit).map { pool[$0] }
+        let sorted = pool.sorted { name($0) < name($1) }
+        let limit = sensorLimit(for: source)
+        guard sorted.count > limit else { return sorted }
+        let step = sorted.count / limit
+        return stride(from: 0, to: sorted.count, by: step).prefix(limit).map { sorted[$0] }
     }
 
+    /// 本机可用的温度来源
+    var availableSources: Set<TemperatureSource> { Set(services.keys) }
+
     /// 返回 (最高温, 平均温, 有效传感器数)；一个读数都拿不到时返回 nil。
-    func read() -> (peak: Double, average: Double, count: Int)? {
+    func read(_ source: TemperatureSource) -> (peak: Double, average: Double, count: Int)? {
+        guard let group = services[source] else { return nil }
         var values: [Double] = []
-        values.reserveCapacity(services.count)
-        for service in services {
+        values.reserveCapacity(group.count)
+        for service in group {
             guard let eventRef = copyEvent(service, Self.temperatureEventType, 0, 0) else { continue }
             let value = getFloat(eventRef.takeRetainedValue(), field)
             // 无效读数：未接传感器会返回负值，异常高值同样丢弃
@@ -111,21 +137,34 @@ public final class TemperatureSampler {
     private let sensors: HIDTemperatureSensors?
     private var cached: TemperatureSnapshot?
     private var lastSampledAt: TimeInterval = 0
+    private var lastSource: TemperatureSource?
 
     public init() {
         sensors = HIDTemperatureSensors()
     }
 
-    /// 本机是否能读到温度
-    public var isAvailable: Bool { sensors != nil }
+    /// 本机可用的温度来源（台式机型通常没有电池传感器）
+    public var availableSources: Set<TemperatureSource> {
+        sensors?.availableSources ?? []
+    }
 
-    public func sample() -> TemperatureSnapshot? {
-        guard let sensors else { return nil }
+    /// 本机是否能读到任一温度
+    public var isAvailable: Bool { !availableSources.isEmpty }
+
+    public func sample(source: TemperatureSource) -> TemperatureSnapshot? {
+        guard let sensors, sensors.availableSources.contains(source) else { return nil }
+        // 换了来源就作废缓存：两种来源量的不是同一件事，不能沿用旧读数
+        if source != lastSource {
+            cached = nil
+            lastSampledAt = 0
+            lastSource = source
+        }
         let now = ProcessInfo.processInfo.systemUptime
         if cached != nil, now - lastSampledAt < Self.minimumInterval { return cached }
-        guard let reading = sensors.read() else { return cached }
+        guard let reading = sensors.read(source) else { return cached }
         lastSampledAt = now
         cached = TemperatureSnapshot(
+            source: source,
             celsius: reading.peak,
             average: reading.average,
             sensorCount: reading.count

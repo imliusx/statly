@@ -15,8 +15,8 @@ public enum HistoryKey: Hashable, CaseIterable {
 /// 弹窗（SwiftUI）观察它；状态栏渲染由 AppCoordinator 直接驱动。
 public final class MetricStore: ObservableObject {
     @Published public private(set) var latest = SystemSnapshot()
-    /// 本机能否读到温度传感器（Intel 机型或私有接口变动时为 false），启动时由协调器写入
-    @Published public var isTemperatureAvailable = false
+    /// 本机可用的温度来源，启动时由协调器写入
+    @Published public var availableTemperatureSources: Set<TemperatureSource> = []
 
     private var buffers: [HistoryKey: RingBuffer] = [:]
     private let historyCapacity: Int
@@ -38,6 +38,12 @@ public final class MetricStore: ObservableObject {
             push(.diskWrite, disk.writePerSecond)
         }
         latest = snapshot
+    }
+
+    /// 清空某项历史。切换温度来源时用：两种来源量的不是同一件事，曲线不能混在一起。
+    public func clearHistory(_ key: HistoryKey) {
+        buffers[key] = nil
+        objectWillChange.send()
     }
 
     public func history(_ key: HistoryKey) -> [Double] {

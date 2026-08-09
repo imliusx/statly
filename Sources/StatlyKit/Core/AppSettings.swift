@@ -14,6 +14,7 @@ public final class AppSettings: ObservableObject {
         static let enabledModules = "enabledModules"
         static let statusStyle = "statusStyle"
         static let labelStyle = "labelStyle"
+        static let temperatureSource = "temperatureSource"
         static let schemaVersion = "schemaVersion"
     }
 
@@ -30,6 +31,11 @@ public final class AppSettings: ObservableObject {
     /// 全局统一的状态栏样式，默认圆环。
     @Published public var statusStyle: StatusStyle {
         didSet { defaults.set(statusStyle.rawValue, forKey: Key.statusStyle) }
+    }
+
+    /// 温度模块显示哪个部件的温度，默认 CPU。
+    @Published public var temperatureSource: TemperatureSource {
+        didSet { defaults.set(temperatureSource.rawValue, forKey: Key.temperatureSource) }
     }
 
     /// 全局统一的标签样式，默认图标。
@@ -65,6 +71,12 @@ public final class AppSettings: ObservableObject {
             self.labelStyle = style
         } else {
             self.labelStyle = .icon
+        }
+        if let raw = defaults.string(forKey: Key.temperatureSource),
+           let source = TemperatureSource(rawValue: raw) {
+            self.temperatureSource = source
+        } else {
+            self.temperatureSource = .cpu
         }
         // 清理早期版本遗留的设置键
         defaults.removeObject(forKey: "cpuStyle")

@@ -10,14 +10,14 @@ public final class SamplerSet {
 
     public init() {}
 
-    /// 本机是否支持温度读取（Intel 机型或系统改动私有接口时为 false）
-    public var isTemperatureAvailable: Bool { temperature.isAvailable }
+    /// 本机可用的温度来源（Intel 机型或系统改动私有接口时为空集）
+    public var availableTemperatureSources: Set<TemperatureSource> { temperature.availableSources }
 
-    public func sample(enabled: Set<ModuleID>) -> SystemSnapshot {
+    public func sample(enabled: Set<ModuleID>, temperatureSource: TemperatureSource) -> SystemSnapshot {
         SystemSnapshot(
             cpu: enabled.contains(.cpu) ? cpu.sample() : nil,
             memory: enabled.contains(.memory) ? memory.sample() : nil,
-            temperature: enabled.contains(.temperature) ? temperature.sample() : nil,
+            temperature: enabled.contains(.temperature) ? temperature.sample(source: temperatureSource) : nil,
             network: enabled.contains(.network) ? network.sample() : nil,
             disk: enabled.contains(.disk) ? disk.sample() : nil
         )

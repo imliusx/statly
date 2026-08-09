@@ -83,7 +83,9 @@ public struct DiskSnapshot: Sendable {
 }
 
 public struct TemperatureSnapshot: Sendable {
-    /// 最高晶粒温度（摄氏度）
+    /// 读数来自哪个部件
+    public let source: TemperatureSource
+    /// 该来源的最高温度（摄氏度）
     public let celsius: Double
     /// 采样传感器的平均温度
     public let average: Double
@@ -94,7 +96,8 @@ public struct TemperatureSnapshot: Sendable {
         min(max((celsius - 30) / 70, 0), 1)
     }
 
-    public init(celsius: Double, average: Double, sensorCount: Int) {
+    public init(source: TemperatureSource = .cpu, celsius: Double, average: Double, sensorCount: Int) {
+        self.source = source
         self.celsius = celsius
         self.average = average
         self.sensorCount = sensorCount

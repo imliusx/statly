@@ -47,7 +47,7 @@ struct PopoverView: View {
         case .temperature:
             if let temperature = store.latest.temperature {
                 temperatureSection(temperature)
-            } else if store.isTemperatureAvailable {
+            } else if !store.availableTemperatureSources.isEmpty {
                 waitingView
             } else {
                 unavailableView
@@ -102,10 +102,13 @@ struct PopoverView: View {
     }
 
     private func temperatureSection(_ temperature: TemperatureSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            header("温度", value: Format.temperature(temperature.celsius))
+        let detail = temperature.source == .cpu
+            ? "取 \(temperature.sensorCount) 个晶粒传感器的最高值"
+            : "取 \(temperature.sensorCount) 个电池传感器的最高值"
+        return VStack(alignment: .leading, spacing: 6) {
+            header("\(temperature.source.displayName)温度", value: Format.temperature(temperature.celsius))
             valueChart(store.history(.temperature))
-            Text("平均 \(Format.temperature(temperature.average)) · 取 \(temperature.sensorCount) 个晶粒传感器的最高值 · 每 5 秒更新")
+            Text("平均 \(Format.temperature(temperature.average)) · \(detail) · 每 5 秒更新")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
