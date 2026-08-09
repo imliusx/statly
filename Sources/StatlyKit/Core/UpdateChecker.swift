@@ -3,6 +3,7 @@ import AppKit
 /// 检查更新：请求 GitHub Releases 最新版本号与当前版本比较。
 /// 零依赖实现（无 Sparkle），主更新渠道是 Homebrew cask / 手动下载。
 enum UpdateChecker {
+    static let repositoryURL = URL(string: "https://github.com/imliusx/statly")!
     static let releasesPageURL = URL(string: "https://github.com/imliusx/statly/releases")!
     private static let latestAPIURL = URL(string: "https://api.github.com/repos/imliusx/statly/releases/latest")!
 

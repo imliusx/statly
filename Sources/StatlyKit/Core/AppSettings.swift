@@ -68,8 +68,13 @@ public final class AppSettings: ObservableObject {
     }
 
     public var launchAtLogin: Bool {
-        get { SMAppService.mainApp.status == .enabled }
+        get {
+            // 非 .app 运行（开发用裸二进制、单元测试）时不去碰 SMAppService
+            guard canToggleLaunchAtLogin else { return false }
+            return SMAppService.mainApp.status == .enabled
+        }
         set {
+            guard canToggleLaunchAtLogin else { return }
             objectWillChange.send()
             do {
                 if newValue {

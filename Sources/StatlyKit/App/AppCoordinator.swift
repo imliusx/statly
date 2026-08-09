@@ -239,7 +239,7 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
 
     private func openSettings() {
         if settingsWindowController == nil {
-            let controller = SettingsWindowController(settings: settings)
+            let controller = SettingsWindowController(settings: settings, store: store)
             if let window = controller.window {
                 NotificationCenter.default.addObserver(
                     self,
