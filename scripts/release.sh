@@ -37,7 +37,7 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 echo "==> 运行测试"
-swift test 2>&1 | tail -1
+swift test 2>&1 | grep -E "Executed [0-9]+ tests" | tail -1
 
 echo "==> 构建 Release（版本 ${VERSION}，构建号 ${BUILD_NUMBER}）"
 xcodegen generate >/dev/null

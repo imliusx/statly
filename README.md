@@ -50,6 +50,28 @@ Sources/StatlyKit/
 
 温度没有公开 API，走的是 `IOHIDEventSystemClient` 私有接口：读不到时该模块自动降级为不可用，不影响其余模块；也因此本项目只做直接分发，不上 App Store。
 
+## 发布
+
+```sh
+scripts/release.sh 0.1.0             # 构建 + 签名 + 出 DMG 到 dist/，不发布
+scripts/release.sh 0.1.0 --publish   # 同上，并打 tag、创建 GitHub Release
+```
+
+签名与公证按本机能力自动降级：
+
+| 本机条件 | 结果 |
+|---|---|
+| 有 Developer ID Application 证书 + notarytool 凭据 | 正式签名 + 公证 + staple，用户双击即开 |
+| 有 Developer ID 证书但没配公证凭据 | 正式签名，跳过公证 |
+| 只有开发证书或没有证书 | ad-hoc 签名，首次打开需右键 → 打开 |
+
+配置公证凭据（需付费 Apple Developer 账号）：
+
+```sh
+xcrun notarytool store-credentials statly-notary \
+    --apple-id <AppleID> --team-id <团队ID> --password <应用专用密码>
+```
+
 ## 路线图
 
 见 [PLAN.md](PLAN.md)。当前完成度：M0 脚手架 ✓ · M1 CPU/内存 ✓ · M2 网络/磁盘/图表 ✓ · M3 发布准备（进行中）。
