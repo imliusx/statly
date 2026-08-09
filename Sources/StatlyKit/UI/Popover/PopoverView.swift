@@ -4,6 +4,7 @@ import Charts
 /// 点击状态栏后的单模块详情弹窗。仅在弹窗存在期间参与渲染，关闭即随 hosting controller 释放。
 struct PopoverView: View {
     @ObservedObject var store: MetricStore
+    @ObservedObject var topStore: TopProcessStore
     let module: ModuleID
     var onOpenSettings: () -> Void
     var onQuit: () -> Void
@@ -22,13 +23,57 @@ struct PopoverView: View {
     private var content: some View {
         switch module {
         case .cpu:
-            if let cpu = store.latest.cpu { cpuSection(cpu) } else { waitingView }
+            if let cpu = store.latest.cpu {
+                cpuSection(cpu)
+                Divider()
+                topProcessSection(
+                    "CPU 占用最高",
+                    rows: topStore.byCPU.map { ($0.id, $0.name, String(format: "%.1f%%", $0.cpu)) }
+                )
+            } else {
+                waitingView
+            }
         case .memory:
-            if let memory = store.latest.memory { memorySection(memory) } else { waitingView }
+            if let memory = store.latest.memory {
+                memorySection(memory)
+                Divider()
+                topProcessSection(
+                    "内存占用最高",
+                    rows: topStore.byMemory.map { ($0.id, $0.name, Format.memoryGB($0.footprint)) }
+                )
+            } else {
+                waitingView
+            }
         case .network:
             networkSection(store.latest.network)
         case .disk:
             if let disk = store.latest.disk { diskSection(disk) } else { waitingView }
+        }
+    }
+
+    private func topProcessSection(_ title: String, rows: [(pid_t, String, String)]) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if rows.isEmpty {
+                Text("统计中…")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            } else {
+                ForEach(rows, id: \.0) { row in
+                    HStack(spacing: 8) {
+                        Text(row.1)
+                            .font(.caption)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Spacer()
+                        Text(row.2)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
         }
     }
 

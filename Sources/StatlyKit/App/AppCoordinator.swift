@@ -9,6 +9,7 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
     private let store = MetricStore()
     private let samplers = SamplerSet()
     private let scheduler = Scheduler()
+    private let topStore = TopProcessStore()
 
     private var controllers: [ModuleID: StatusItemController] = [:]
     private let popover = NSPopover()
@@ -176,8 +177,15 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
         }
         // 点同一个模块 = 关闭（切换）；点其他模块 = 换内容重开
         guard showing != module else { return }
+        // Top 进程重采样仅在 CPU/内存详情打开期间运行（轻量化守则"按需分级"）
+        if module == .cpu || module == .memory {
+            topStore.start(interval: min(settings.refreshInterval, 2))
+        } else {
+            topStore.stop()
+        }
         let view = PopoverView(
             store: store,
+            topStore: topStore,
             module: module,
             onOpenSettings: { [weak self] in
                 self?.popover.performClose(nil)
@@ -194,9 +202,10 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
         // 已经切换到新内容重开时不做清理
         guard !popover.isShown else { return }
-        // 轻量化守则：关闭即释放 SwiftUI 层
+        // 轻量化守则：关闭即释放 SwiftUI 层与 Top 进程采样
         popover.contentViewController = nil
         popoverModule = nil
+        topStore.stop()
     }
 
     // MARK: - 菜单与设置窗口
@@ -211,6 +220,10 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
         let aboutItem = NSMenuItem(title: "关于 Statly", action: #selector(showAbout), keyEquivalent: "")
         aboutItem.target = self
         menu.addItem(aboutItem)
+
+        let updateItem = NSMenuItem(title: "检查更新…", action: #selector(checkForUpdates), keyEquivalent: "")
+        updateItem.target = self
+        menu.addItem(updateItem)
 
         menu.addItem(.separator())
 
@@ -253,6 +266,43 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
     @objc private func showAbout() {
         NSApplication.shared.activate(ignoringOtherApps: true)
         NSApplication.shared.orderFrontStandardAboutPanel(nil)
+    }
+
+    @objc private func checkForUpdates() {
+        UpdateChecker.check { [weak self] outcome in
+            self?.presentUpdateOutcome(outcome)
+        }
+    }
+
+    private func presentUpdateOutcome(_ outcome: UpdateChecker.Outcome) {
+        let alert = NSAlert()
+        var showDownload = false
+        switch outcome {
+        case .upToDate(let current):
+            alert.messageText = "已是最新版本"
+            alert.informativeText = "当前版本 \(current)。"
+        case .newVersion(let version):
+            alert.messageText = "发现新版本 \(version)"
+            alert.informativeText = "当前版本 \(UpdateChecker.currentVersion)，可前往下载页获取更新。"
+            showDownload = true
+        case .noReleases:
+            alert.messageText = "暂无发布版本"
+            alert.informativeText = "仓库还没有发布过 Release。"
+        case .failed(let reason):
+            alert.messageText = "检查更新失败"
+            alert.informativeText = reason
+        }
+        if showDownload {
+            alert.addButton(withTitle: "前往下载")
+            alert.addButton(withTitle: "稍后")
+        } else {
+            alert.addButton(withTitle: "好")
+        }
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        let response = alert.runModal()
+        if showDownload, response == .alertFirstButtonReturn {
+            NSWorkspace.shared.open(UpdateChecker.releasesPageURL)
+        }
     }
 
     @objc private func quit() {
