@@ -151,15 +151,14 @@ struct PopoverView: View {
     }
 
     private var footer: some View {
-        HStack {
+        HStack(spacing: 2) {
             Text("Statly")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
             Spacer()
-            Button("设置…", action: onOpenSettings)
-            Button("退出", action: onQuit)
+            FooterIconButton(symbol: "gearshape", help: "设置…", action: onOpenSettings)
+            FooterIconButton(symbol: "power", help: "退出 Statly", action: onQuit)
         }
-        .controlSize(.small)
     }
 
     // MARK: - 复用小件
@@ -215,5 +214,31 @@ struct PopoverView: View {
         case .warning: return .yellow
         case .critical: return .red
         }
+    }
+}
+
+/// 弹窗底部的图标按钮：无边框、悬停时显示圆角底色，工具提示补足图标缺失的文字说明。
+private struct FooterIconButton: View {
+    let symbol: String
+    let help: String
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 13, weight: .medium))
+                .frame(width: 24, height: 22)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(Color.primary.opacity(isHovering ? 0.1 : 0))
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .help(help)
+        .onHover { isHovering = $0 }
     }
 }
