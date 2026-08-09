@@ -27,7 +27,6 @@ struct SettingsView: View {
             }
 
             Section("状态栏样式") {
-                Toggle("合并为单个图标", isOn: $settings.mergeModules)
                 Picker("占用样式", selection: $settings.statusStyle) {
                     ForEach(StatusStyle.allCases, id: \.self) { style in
                         Text(style.displayName).tag(style)
@@ -40,7 +39,7 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                Text("合并模式间距更紧凑（推荐，刘海屏友好）；关闭后每个模块是独立图标，可 ⌘ 拖动单独排序。精确数值可悬停或点击图标查看。")
+                Text("点击各模块图标查看对应详情；精确数值可悬停查看。图标可按住 ⌘ 拖动排序。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

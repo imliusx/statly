@@ -1,35 +1,40 @@
 import SwiftUI
 import Charts
 
-/// 点击状态栏后的详情弹窗。仅在弹窗存在期间参与渲染，关闭即随 hosting controller 释放。
+/// 点击状态栏后的单模块详情弹窗。仅在弹窗存在期间参与渲染，关闭即随 hosting controller 释放。
 struct PopoverView: View {
     @ObservedObject var store: MetricStore
-    @ObservedObject var settings: AppSettings
+    let module: ModuleID
     var onOpenSettings: () -> Void
     var onQuit: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            if settings.enabledModules.contains(.cpu), let cpu = store.latest.cpu {
-                cpuSection(cpu)
-                Divider()
-            }
-            if settings.enabledModules.contains(.memory), let memory = store.latest.memory {
-                memorySection(memory)
-                Divider()
-            }
-            if settings.enabledModules.contains(.network) {
-                networkSection(store.latest.network)
-                Divider()
-            }
-            if settings.enabledModules.contains(.disk), let disk = store.latest.disk {
-                diskSection(disk)
-                Divider()
-            }
+        VStack(alignment: .leading, spacing: 12) {
+            content
+            Divider()
             footer
         }
         .padding(14)
         .frame(width: 300)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch module {
+        case .cpu:
+            if let cpu = store.latest.cpu { cpuSection(cpu) } else { waitingView }
+        case .memory:
+            if let memory = store.latest.memory { memorySection(memory) } else { waitingView }
+        case .network:
+            networkSection(store.latest.network)
+        case .disk:
+            if let disk = store.latest.disk { diskSection(disk) } else { waitingView }
+        }
+    }
+
+    private var waitingView: some View {
+        Text("等待采样…")
+            .foregroundStyle(.secondary)
     }
 
     // MARK: - 各模块区块

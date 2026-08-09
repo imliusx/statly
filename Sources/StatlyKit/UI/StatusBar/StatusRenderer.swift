@@ -4,14 +4,11 @@ import AppKit
 /// （黑色 + isTemplate），由系统适配深浅色。
 /// 标签块四种样式：图标（SF Symbols）/ 竖排小字 / 横排文本 / 隐藏。
 /// 图形块：圆环+百分比 / 迷你图 / 等宽数值 / 双行速率。
-/// 合并紧凑模式把所有启用模块横向拼进一张图，模块间距自控，规避系统项间距。
 enum StatusRenderer {
-    /// 合并模式下相邻模块的间距
-    private static let moduleSpacing: CGFloat = 10
 
     // MARK: - 入口
 
-    /// 独立模式：单个模块一个状态栏 item。
+    /// 单个模块一个状态栏 item。
     static func render(
         module: ModuleID,
         snapshot: SystemSnapshot,
@@ -37,29 +34,6 @@ enum StatusRenderer {
             key: "\(module.rawValue)-\(labelStyle.rawValue)-\(content.key)",
             content: .image(imageFrom(block)),
             tooltip: content.tooltip
-        )
-    }
-
-    /// 合并紧凑模式：所有启用模块拼进一张模板图。
-    static func renderMerged(
-        modules: [ModuleID],
-        snapshot: SystemSnapshot,
-        style: StatusStyle,
-        labelStyle: LabelStyle,
-        histories: [ModuleID: [Double]]
-    ) -> RenderOutput {
-        let contents = modules.map {
-            moduleContent(module: $0, snapshot: snapshot, style: style, history: histories[$0] ?? [])
-        }
-        let blocks = zip(modules, contents).map {
-            groupBlock(module: $0, labelStyle: labelStyle, graphic: $1.graphic)
-        }
-        let key = "merged-\(style.rawValue)-\(labelStyle.rawValue)-"
-            + zip(modules, contents).map { "\($0.rawValue):\($1.key)" }.joined(separator: ";")
-        return RenderOutput(
-            key: key,
-            content: .image(imageFrom(hstack(blocks, spacing: moduleSpacing))),
-            tooltip: contents.map(\.tooltip).joined(separator: "\n")
         )
     }
 
@@ -197,7 +171,7 @@ enum StatusRenderer {
 
     private static func icon(for module: ModuleID) -> NSImage? {
         if let cached = iconCache[module] { return cached }
-        let configuration = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
+        let configuration = NSImage.SymbolConfiguration(pointSize: 15, weight: .medium)
         guard let image = NSImage(systemSymbolName: symbolName(module), accessibilityDescription: module.displayName)?
             .withSymbolConfiguration(configuration) else { return nil }
         iconCache[module] = image
@@ -230,28 +204,6 @@ enum StatusRenderer {
                     width: content.size.width,
                     height: content.size.height
                 ))
-            }
-        )
-    }
-
-    /// 横向拼接多个块，间距固定，各块垂直居中。
-    private static func hstack(_ blocks: [Block], spacing: CGFloat) -> Block {
-        let width = blocks.reduce(0) { $0 + $1.size.width }
-            + spacing * CGFloat(max(0, blocks.count - 1))
-        let height = blocks.map(\.size.height).max() ?? 0
-        return (
-            size: NSSize(width: width, height: height),
-            draw: { rect in
-                var x = rect.minX
-                for block in blocks {
-                    block.draw(NSRect(
-                        x: x,
-                        y: rect.minY + (rect.height - block.size.height) / 2,
-                        width: block.size.width,
-                        height: block.size.height
-                    ))
-                    x += block.size.width + spacing
-                }
             }
         )
     }

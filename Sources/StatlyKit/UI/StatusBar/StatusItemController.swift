@@ -12,8 +12,7 @@ struct RenderOutput {
     let tooltip: String
 }
 
-/// 一个状态栏 item（独立模式下对应单个模块，合并模式下承载全部模块）。
-/// 左键弹详情，右键弹菜单。
+/// 单个指标模块对应的 NSStatusItem。左键弹该模块详情，右键弹菜单。
 final class StatusItemController: NSObject {
     private let item: NSStatusItem
     private var lastKey: String?

@@ -11,7 +11,6 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
     private let scheduler = Scheduler()
 
     private var controllers: [ModuleID: StatusItemController] = [:]
-    private var mergedController: StatusItemController?
     private let popover = NSPopover()
     private var settingsWindowController: SettingsWindowController?
     private var cancellables: Set<AnyCancellable> = []
@@ -52,26 +51,8 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
     private func renderAll() {
         let style = settings.statusStyle
         let labelStyle = settings.labelStyle
-
-        if let merged = mergedController {
-            let modules = ModuleID.allCases.filter(settings.enabledModules.contains)
-            // 仅迷你图样式需要历史数据，其余模式不做无谓的数组拷贝
-            var histories: [ModuleID: [Double]] = [:]
-            if style == .graph {
-                histories[.cpu] = store.history(.cpuTotal)
-                histories[.memory] = store.history(.memoryUsedFraction)
-            }
-            merged.update(StatusRenderer.renderMerged(
-                modules: modules,
-                snapshot: lastSnapshot,
-                style: style,
-                labelStyle: labelStyle,
-                histories: histories
-            ))
-            return
-        }
-
         for (module, controller) in controllers {
+            // 仅迷你图样式需要历史数据，其余模式不做无谓的数组拷贝
             let history: [Double]
             if style == .graph {
                 switch module {
@@ -96,33 +77,23 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
     // MARK: - 状态栏 item 管理
 
     private func rebuildStatusItems() {
-        if settings.mergeModules {
-            for (_, controller) in controllers { controller.remove() }
-            controllers = [:]
-            if mergedController == nil {
-                mergedController = makeController(autosaveName: "statly.merged", toolTip: "Statly")
-            }
-        } else {
-            mergedController?.remove()
-            mergedController = nil
-            let enabled = settings.enabledModules
-            for (module, controller) in controllers where !enabled.contains(module) {
-                controller.remove()
-                controllers[module] = nil
-            }
-            for module in Self.creationOrder where enabled.contains(module) && controllers[module] == nil {
-                controllers[module] = makeController(
-                    autosaveName: "statly.\(module.rawValue)",
-                    toolTip: "Statly · \(module.displayName)"
-                )
-            }
+        let enabled = settings.enabledModules
+        for (module, controller) in controllers where !enabled.contains(module) {
+            controller.remove()
+            controllers[module] = nil
+        }
+        for module in Self.creationOrder where enabled.contains(module) && controllers[module] == nil {
+            controllers[module] = makeController(module: module)
         }
     }
 
-    private func makeController(autosaveName: String, toolTip: String) -> StatusItemController {
-        let controller = StatusItemController(autosaveName: autosaveName, toolTip: toolTip)
+    private func makeController(module: ModuleID) -> StatusItemController {
+        let controller = StatusItemController(
+            autosaveName: "statly.\(module.rawValue)",
+            toolTip: "Statly · \(module.displayName)"
+        )
         controller.onLeftClick = { [weak self] button in
-            self?.togglePopover(from: button)
+            self?.handlePopoverClick(button: button, module: module)
         }
         controller.onRightClick = { [weak self, weak controller] in
             guard let controller else { return }
@@ -163,16 +134,6 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
                 DispatchQueue.main.async { self?.renderAll() }
             }
             .store(in: &cancellables)
-
-        settings.$mergeModules.dropFirst()
-            .sink { [weak self] _ in
-                DispatchQueue.main.async {
-                    guard let self else { return }
-                    self.rebuildStatusItems()
-                    self.renderAll()
-                }
-            }
-            .store(in: &cancellables)
     }
 
     // MARK: - 睡眠/唤醒（轻量化守则：看不见就停）
@@ -205,14 +166,19 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
 
     // MARK: - 弹窗
 
-    private func togglePopover(from button: NSStatusBarButton) {
+    /// 当前弹窗展示的模块；nil 表示未展示
+    private var popoverModule: ModuleID?
+
+    private func handlePopoverClick(button: NSStatusBarButton, module: ModuleID) {
+        let showing = popoverModule
         if popover.isShown {
             popover.performClose(nil)
-            return
         }
+        // 点同一个模块 = 关闭（切换）；点其他模块 = 换内容重开
+        guard showing != module else { return }
         let view = PopoverView(
             store: store,
-            settings: settings,
+            module: module,
             onOpenSettings: { [weak self] in
                 self?.popover.performClose(nil)
                 self?.openSettings()
@@ -220,13 +186,17 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
             onQuit: { NSApplication.shared.terminate(nil) }
         )
         popover.contentViewController = NSHostingController(rootView: view)
+        popoverModule = module
         NSApplication.shared.activate(ignoringOtherApps: true)
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
     }
 
     func popoverDidClose(_ notification: Notification) {
+        // 已经切换到新内容重开时不做清理
+        guard !popover.isShown else { return }
         // 轻量化守则：关闭即释放 SwiftUI 层
         popover.contentViewController = nil
+        popoverModule = nil
     }
 
     // MARK: - 菜单与设置窗口

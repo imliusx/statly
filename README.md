@@ -18,22 +18,23 @@ macOS 状态栏系统监控：CPU · 内存 · 网速 · 磁盘。
 
 ## 构建
 
-要求 macOS 13+，Xcode 15+。
+要求 macOS 13+，Xcode 15+；生成工程需要 [XcodeGen](https://github.com/yonaskolb/XcodeGen)（`brew install xcodegen`）。
 
 ```sh
-make run    # 开发运行（裸二进制，开机自启不可用）
-make test   # 单元测试
-make app    # 打包 dist/Statly.app（ad-hoc 签名）
+make run        # 开发运行（SPM 裸二进制，最快的改-看循环；开机自启不可用）
+make test       # 单元测试（SPM）
+make xcodeproj  # 生成 Statly.xcodeproj（用 Xcode 开发调试真 .app）
+make app        # xcodebuild Release 打包到 dist/Statly.app
 ```
 
-也可以用 Xcode 直接打开 `Package.swift` 开发调试。
+工程结构：`project.yml` 是 Xcode 工程的唯一事实来源（生成的 .xcodeproj 不入库）；`Package.swift` 继续负责单元测试与快速开发运行。
 
 ## 使用
 
-- 默认**合并紧凑模式**：全部模块拼在一个状态栏图标里，间距紧凑、刘海屏友好
-- 左键点击：展开详情弹窗（历史曲线、内存压力、磁盘读写等）；右键：设置 / 退出菜单
-- 设置中可切换为独立图标模式（每模块一个图标，可按住 ⌘ 拖动排序）
-- 样式可自由搭配：占用（圆环/文本/迷你图）× 标签（图标/竖排/文本/隐藏）
+- 每个模块一个状态栏图标，按住 ⌘ 拖动可排序，位置会被系统记住
+- 左键点击某个模块：展开**该模块**的详情弹窗（历史曲线、内存压力、磁盘读写等）
+- 右键任一图标：设置 / 退出菜单
+- 样式可自由搭配：占用（圆环+百分比/文本/迷你图）× 标签（图标/竖排/文本/隐藏）
 
 ## 架构
 

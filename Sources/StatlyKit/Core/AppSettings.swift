@@ -11,7 +11,6 @@ public final class AppSettings: ObservableObject {
         static let enabledModules = "enabledModules"
         static let statusStyle = "statusStyle"
         static let labelStyle = "labelStyle"
-        static let mergeModules = "mergeModules"
     }
 
     private let defaults: UserDefaults
@@ -32,12 +31,6 @@ public final class AppSettings: ObservableObject {
     /// 全局统一的标签样式，默认图标。
     @Published public var labelStyle: LabelStyle {
         didSet { defaults.set(labelStyle.rawValue, forKey: Key.labelStyle) }
-    }
-
-    /// 合并紧凑模式：所有模块拼进一个状态栏图标，模块间距由 Statly 控制。
-    /// 关闭后每个模块是独立图标（可 ⌘ 拖动单独排序，但受系统项间距影响）。
-    @Published public var mergeModules: Bool {
-        didSet { defaults.set(mergeModules, forKey: Key.mergeModules) }
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -63,13 +56,9 @@ public final class AppSettings: ObservableObject {
         } else {
             self.labelStyle = .icon
         }
-        if defaults.object(forKey: Key.mergeModules) == nil {
-            self.mergeModules = true
-        } else {
-            self.mergeModules = defaults.bool(forKey: Key.mergeModules)
-        }
-        // 清理早期版本遗留的 per-module 样式键
+        // 清理早期版本遗留的设置键
         defaults.removeObject(forKey: "cpuStyle")
+        defaults.removeObject(forKey: "mergeModules")
     }
 
     // MARK: - 开机自启（需要以 .app bundle 运行，裸二进制开发模式下不可用）
