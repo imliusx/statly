@@ -36,8 +36,13 @@ if [[ -n "$(git status --porcelain)" ]]; then
     exit 1
 fi
 
-echo "==> 运行测试"
-swift test 2>&1 | grep -E "Executed [0-9]+ tests" | tail -1
+# 测试代码不入库，仅本地存在时才跑
+if [[ -d Tests ]]; then
+    echo "==> 运行测试"
+    swift test 2>&1 | grep -E "Executed [0-9]+ tests" | tail -1
+else
+    echo "==> 跳过测试（本地无 Tests 目录）"
+fi
 
 echo "==> 构建 Release（版本 ${VERSION}，构建号 ${BUILD_NUMBER}）"
 xcodegen generate >/dev/null

@@ -4,3 +4,7 @@ dist/
 .swiftpm/
 xcuserdata/
 *.xcodeproj
+
+# 不入库：开发规划与测试代码（仅保留在本地）
+PLAN.md
+Tests/

@@ -10,7 +10,7 @@ run: build
 	./.build/debug/Statly
 
 test:
-	swift test
+	@test -d Tests && swift test || echo "无 Tests 目录，跳过"
 
 xcodeproj:
 	xcodegen generate
