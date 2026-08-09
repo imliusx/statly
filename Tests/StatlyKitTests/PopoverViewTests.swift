@@ -23,8 +23,45 @@ final class PopoverViewTests: XCTestCase {
         return renderer.nsImage?.tiffRepresentation
     }
 
-    /// 磁盘用量条必须真的画出来：早前用的 ProgressView 是 AppKit 控件包装，
-    /// 在非活跃窗口里会变灰、且完全不参与 SwiftUI 渲染，占用高低画出来一模一样。
+    /// 温度曲线的填充不能溢出图表边界盖住下方内容。
+    ///
+    /// 做法：两个仓库的最新读数完全相同、只有历史曲线不同，那么除图表以外的
+    /// 一切（说明文字、页脚）都应逐像素一致。若面积图溢出，改变历史就会污染下方区域。
+    func testTemperatureChartDoesNotBleedOverContentBelow() {
+        func snapshot(_ celsius: Double) -> SystemSnapshot {
+            SystemSnapshot(temperature: TemperatureSnapshot(celsius: celsius, average: 40, sensorCount: 4))
+        }
+        let flat = MetricStore()
+        for _ in 0..<12 { flat.apply(snapshot(40)) }
+
+        let varying = MetricStore()
+        for step in 0..<11 { varying.apply(snapshot(30 + Double(step) * 3)) }
+        varying.apply(snapshot(40))   // 收尾于同一读数，头部与文字因此完全一致
+
+        let top = TopProcessStore()
+        guard let a = image(module: .temperature, store: flat, top: top),
+              let b = image(module: .temperature, store: varying, top: top) else {
+            return XCTFail("温度弹窗渲染失败")
+        }
+        XCTAssertNotEqual(a, b, "历史不同，曲线本身应当不同（否则本用例失去意义）")
+
+        guard let repA = NSBitmapImageRep(data: a), let repB = NSBitmapImageRep(data: b) else {
+            return XCTFail("位图解析失败")
+        }
+        XCTAssertEqual(repA.pixelsHigh, repB.pixelsHigh)
+        // 图表下方（下半部）必须逐像素一致
+        var mismatches = 0
+        let start = repA.pixelsHigh / 2
+        for y in start..<repA.pixelsHigh {
+            for x in stride(from: 0, to: repA.pixelsWide, by: 3) {
+                var pa = [Int](repeating: 0, count: 5), pb = [Int](repeating: 0, count: 5)
+                repA.getPixel(&pa, atX: x, y: y)
+                repB.getPixel(&pb, atX: x, y: y)
+                if pa != pb { mismatches += 1 }
+            }
+        }
+        XCTAssertEqual(mismatches, 0, "图表下方有 \(mismatches) 个像素被曲线填充污染")
+    }
     func testDiskUsageBarReflectsUsage() {
         func snapshot(free: UInt64) -> SystemSnapshot {
             SystemSnapshot(disk: DiskSnapshot(

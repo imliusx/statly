@@ -215,19 +215,28 @@ struct PopoverView: View {
     }
 
     /// 纵轴自适应的曲线（温度等非比例数值用）。
+    ///
+    /// 面积必须显式从纵轴下界起画：AreaMark(x:y:) 默认以 0 为基线，而这里的
+    /// 定义域是 38...45 之类不含 0 的区间，基线会落到绘图区下方很远处，
+    /// 填充随之溢出图表边界盖住下方文字。
     private func valueChart(_ values: [Double]) -> some View {
         let lower = (values.min() ?? 0) - 3
-        let upper = (values.max() ?? 1) + 3
+        let upper = max(lower + 1, (values.max() ?? 1) + 3)
         return Chart(Array(values.enumerated()), id: \.offset) { point in
-            AreaMark(x: .value("时间", point.offset), y: .value("值", point.element))
-                .foregroundStyle(Color.accentColor.opacity(0.15))
+            AreaMark(
+                x: .value("时间", point.offset),
+                yStart: .value("下界", lower),
+                yEnd: .value("值", point.element)
+            )
+            .foregroundStyle(Color.accentColor.opacity(0.15))
             LineMark(x: .value("时间", point.offset), y: .value("值", point.element))
                 .foregroundStyle(Color.accentColor)
         }
         .chartXAxis(.hidden)
         .chartYAxis(.hidden)
-        .chartYScale(domain: lower...max(lower + 1, upper))
+        .chartYScale(domain: lower...upper)
         .frame(height: 44)
+        .clipped()
     }
 
     private func rateChart(rx: [Double], tx: [Double]) -> some View {
