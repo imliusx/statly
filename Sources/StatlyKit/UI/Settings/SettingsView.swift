@@ -27,13 +27,26 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
 
     var symbol: String {
         switch self {
-        case .general: return "gearshape"
-        case .appearance: return "paintbrush"
-        case .cpu: return "cpu"
-        case .memory: return "memorychip"
+        case .general: return "gearshape.fill"
+        case .appearance: return "paintbrush.fill"
+        case .cpu: return "cpu.fill"
+        case .memory: return "memorychip.fill"
         case .network: return "network"
-        case .disk: return "internaldrive"
-        case .about: return "info.circle"
+        case .disk: return "internaldrive.fill"
+        case .about: return "info"
+        }
+    }
+
+    /// 侧边栏图标块底色，沿用系统设置的彩色图标语汇
+    var tint: Color {
+        switch self {
+        case .general: return .gray
+        case .appearance: return .indigo
+        case .cpu: return .blue
+        case .memory: return .green
+        case .network: return .purple
+        case .disk: return .orange
+        case .about: return .secondary
         }
     }
 
@@ -66,24 +79,41 @@ struct SettingsView: View {
     var body: some View {
         NavigationSplitView {
             List(SettingsSection.allCases, id: \.self, selection: $selection) { section in
-                Label(section.title, systemImage: section.symbol)
+                SidebarRow(section: section)
                     .tag(section)
             }
             .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(min: 150, ideal: 165, max: 220)
+            .navigationSplitViewColumnWidth(min: 168, ideal: 182, max: 230)
         } detail: {
-            ScrollView {
-                SettingsDetailView(section: selection, settings: settings, store: store)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(22)
-            }
-            .navigationTitle(selection.title)
+            SettingsDetailView(section: selection, settings: settings, store: store)
+                .navigationTitle(selection.title)
         }
-        .frame(minWidth: 620, idealWidth: 660, minHeight: 400, idealHeight: 430)
+        .navigationSplitViewStyle(.balanced)
+        .frame(minWidth: 660, idealWidth: 700, minHeight: 420, idealHeight: 460)
     }
 }
 
-/// 右侧内容页。
+/// 侧边栏行：彩色圆角图标块 + 标题（系统设置的视觉语汇）。
+private struct SidebarRow: View {
+    let section: SettingsSection
+
+    var body: some View {
+        HStack(spacing: 9) {
+            RoundedRectangle(cornerRadius: 5.5, style: .continuous)
+                .fill(section.tint.gradient)
+                .frame(width: 21, height: 21)
+                .overlay(
+                    Image(systemName: section.symbol)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white)
+                )
+            Text(section.title)
+        }
+        .padding(.vertical, 1)
+    }
+}
+
+/// 右侧内容页。用 .formStyle(.grouped) 得到系统设置的分组卡片外观。
 struct SettingsDetailView: View {
     let section: SettingsSection
     @ObservedObject var settings: AppSettings
@@ -93,111 +123,111 @@ struct SettingsDetailView: View {
     @State private var isCheckingUpdate = false
 
     var body: some View {
-        detail
-    }
-
-    @ViewBuilder
-    private var detail: some View {
-        switch section {
-        case .general: generalPage
-        case .appearance: appearancePage
-        case .about: aboutPage
-        default:
-            if let module = section.module {
-                modulePage(module)
+        Form {
+            switch section {
+            case .general: generalPage
+            case .appearance: appearancePage
+            case .about: aboutPage
+            default:
+                if let module = section.module {
+                    modulePage(module)
+                }
             }
         }
+        .formStyle(.grouped)
     }
 
     // MARK: - 通用
 
+    @ViewBuilder
     private var generalPage: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            settingGroup("采样") {
-                Picker("刷新间隔", selection: $settings.refreshInterval) {
-                    ForEach(AppSettings.allowedIntervals, id: \.self) { interval in
-                        Text("\(Int(interval)) 秒").tag(interval)
-                    }
+        Section {
+            Picker("刷新间隔", selection: $settings.refreshInterval) {
+                ForEach(AppSettings.allowedIntervals, id: \.self) { interval in
+                    Text("\(Int(interval)) 秒").tag(interval)
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                caption("2 秒是显示效果与功耗的平衡点。所有模块共用一次采样唤醒，锁屏或息屏时自动暂停。")
             }
+        } header: {
+            Text("采样")
+        } footer: {
+            footnote("2 秒是显示效果与功耗的平衡点。所有模块共用一次采样唤醒，锁屏或息屏时自动暂停。")
+        }
 
-            settingGroup("启动") {
-                Toggle("随系统启动", isOn: launchAtLoginBinding)
-                    .disabled(!settings.canToggleLaunchAtLogin)
-                if !settings.canToggleLaunchAtLogin {
-                    caption("以 .app 方式运行时可用（make app）。")
-                }
+        Section {
+            Toggle("随系统启动", isOn: launchAtLoginBinding)
+                .disabled(!settings.canToggleLaunchAtLogin)
+        } header: {
+            Text("启动")
+        } footer: {
+            if !settings.canToggleLaunchAtLogin {
+                footnote("以 .app 方式运行时可用（make app）。")
             }
         }
     }
 
     // MARK: - 外观
 
+    @ViewBuilder
     private var appearancePage: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            settingGroup("占用样式") {
-                Picker("占用样式", selection: $settings.statusStyle) {
-                    ForEach(StatusStyle.allCases, id: \.self) { style in
-                        Text(style.displayName).tag(style)
-                    }
+        Section {
+            Picker("占用样式", selection: $settings.statusStyle) {
+                ForEach(StatusStyle.allCases, id: \.self) { style in
+                    Text(style.displayName).tag(style)
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                caption("迷你图适用于 CPU 与内存；磁盘占用几乎不变，会显示为圆环。")
             }
-
-            settingGroup("标签") {
-                Picker("标签", selection: $settings.labelStyle) {
-                    ForEach(LabelStyle.allCases, id: \.self) { style in
-                        Text(style.displayName).tag(style)
-                    }
+            Picker("标签", selection: $settings.labelStyle) {
+                ForEach(LabelStyle.allCases, id: \.self) { style in
+                    Text(style.displayName).tag(style)
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                caption("样式统一应用到所有模块。精确数值可悬停图标查看。")
             }
+        } header: {
+            Text("状态栏")
+        } footer: {
+            footnote("样式统一应用到所有模块。迷你图适用于 CPU 与内存，磁盘占用几乎不变会显示为圆环。")
+        }
 
-            settingGroup("状态栏预览") {
-                previewStrip(ModuleID.allCases.filter(settings.enabledModules.contains))
-            }
+        Section {
+            previewStrip(ModuleID.allCases.filter(settings.enabledModules.contains))
+        } header: {
+            Text("预览")
+        } footer: {
+            footnote("精确数值可悬停图标查看，或点击图标打开详情。")
         }
     }
 
     // MARK: - 模块
 
+    @ViewBuilder
     private func modulePage(_ module: ModuleID) -> some View {
         let isLastEnabled = settings.enabledModules == [module]
-        return VStack(alignment: .leading, spacing: 20) {
-            settingGroup("显示") {
-                Toggle("在状态栏显示", isOn: moduleBinding(module))
-                    .disabled(isLastEnabled)
-                if isLastEnabled {
-                    caption("至少需要保留一个模块。")
-                }
-            }
 
-            if settings.enabledModules.contains(module) {
-                settingGroup("状态栏预览") {
-                    previewStrip([module])
-                }
+        Section {
+            Toggle("在状态栏显示", isOn: moduleBinding(module))
+                .disabled(isLastEnabled)
+        } footer: {
+            if isLastEnabled {
+                footnote("至少需要保留一个模块。")
             }
+        }
 
-            settingGroup("显示内容") {
-                ForEach(Array(moduleFacts(module).enumerated()), id: \.offset) { _, fact in
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(fact.0)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 62, alignment: .leading)
-                        Text(fact.1)
-                            .font(.callout)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+        if settings.enabledModules.contains(module) {
+            Section {
+                previewStrip([module])
+            } header: {
+                Text("预览")
+            }
+        }
+
+        Section {
+            ForEach(Array(moduleFacts(module).enumerated()), id: \.offset) { _, fact in
+                LabeledContent(fact.0) {
+                    Text(fact.1)
+                        .multilineTextAlignment(.trailing)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
+        } header: {
+            Text("显示内容")
         }
     }
 
@@ -233,15 +263,16 @@ struct SettingsDetailView: View {
 
     // MARK: - 关于
 
+    @ViewBuilder
     private var aboutPage: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        Section {
             HStack(spacing: 14) {
                 // 用 NSApplication.shared 而非 NSApp：后者在未初始化 NSApplication 的
                 // 进程里是 nil，取图标会崩
                 if let icon = NSApplication.shared.applicationIconImage {
                     Image(nsImage: icon)
                         .resizable()
-                        .frame(width: 64, height: 64)
+                        .frame(width: 60, height: 60)
                 }
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Statly").font(.title2).bold()
@@ -252,23 +283,26 @@ struct SettingsDetailView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                Spacer()
             }
+            .padding(.vertical, 4)
+        }
 
-            settingGroup("更新") {
-                HStack(spacing: 10) {
-                    Button("检查更新…", action: checkForUpdates)
-                        .disabled(isCheckingUpdate)
+        Section {
+            LabeledContent("检查更新") {
+                HStack(spacing: 8) {
                     if isCheckingUpdate {
                         ProgressView().controlSize(.small)
                     }
+                    Button("检查", action: checkForUpdates)
+                        .disabled(isCheckingUpdate)
                 }
-                Link("GitHub 仓库", destination: UpdateChecker.repositoryURL)
-                    .font(.callout)
             }
-
-            settingGroup("资源占用") {
-                caption("无后台进程、无权限申请、零第三方依赖。全部指标取自用户态公开 API。")
+            LabeledContent("项目主页") {
+                Link("GitHub", destination: UpdateChecker.repositoryURL)
             }
+        } footer: {
+            footnote("无后台进程、无权限申请、零第三方依赖。全部指标取自用户态公开 API。")
         }
         .alert("检查更新", isPresented: updateAlertBinding) {
             if case .newVersion = updateOutcome {
@@ -309,27 +343,18 @@ struct SettingsDetailView: View {
 
     // MARK: - 复用小件
 
-    private func settingGroup<Content: View>(
-        _ title: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.headline)
-            content()
-        }
-    }
-
-    private func caption(_ text: String) -> some View {
+    /// 分组脚注。macOS 的 grouped Form 默认让 footer 靠右且多行右对齐，
+    /// 这里同时拉回块对齐与行内对齐，以对齐系统设置的观感。
+    private func footnote(_ text: String) -> some View {
         Text(text)
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// 用真实渲染器画出的状态栏预览，样式改动即时可见。
     private func previewStrip(_ modules: [ModuleID]) -> some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 18) {
             ForEach(modules, id: \.self) { module in
                 statusPreview(module)
             }
@@ -338,13 +363,16 @@ struct SettingsDetailView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            Spacer(minLength: 0)
         }
-        .frame(height: 24)
+        .frame(height: 26)
         .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 7)
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
                 .fill(Color.primary.opacity(0.06))
         )
+        .padding(.vertical, 2)
     }
 
     @ViewBuilder

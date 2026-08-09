@@ -39,13 +39,27 @@ final class SettingsViewTests: XCTestCase {
         return store
     }
 
+    /// 用 NSHostingView 真实绘制。
+    ///
+    /// 不能用 ImageRenderer：它渲染不了 AppKit 支撑的控件（Form/Picker/Toggle 等），
+    /// 各页会得到同一张空白图，测试就成了空过。
     private func pageImage(_ section: SettingsSection, _ settings: AppSettings, _ store: MetricStore) -> Data? {
-        let renderer = ImageRenderer(
-            content: SettingsDetailView(section: section, settings: settings, store: store)
-                .frame(width: 460, alignment: .leading)
+        let size = NSSize(width: 500, height: 420)
+        let hosting = NSHostingView(
+            rootView: SettingsDetailView(section: section, settings: settings, store: store)
         )
-        renderer.scale = 1
-        return renderer.nsImage?.tiffRepresentation
+        hosting.frame = NSRect(origin: .zero, size: size)
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: size),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = hosting
+        hosting.layoutSubtreeIfNeeded()
+        guard let rep = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else { return nil }
+        hosting.cacheDisplay(in: hosting.bounds, to: rep)
+        return rep.representation(using: .png, properties: [:])
     }
 
     func testEverySectionRendersDistinctContent() {
