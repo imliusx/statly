@@ -44,6 +44,14 @@ struct PopoverView: View {
             } else {
                 waitingView
             }
+        case .temperature:
+            if let temperature = store.latest.temperature {
+                temperatureSection(temperature)
+            } else if store.isTemperatureAvailable {
+                waitingView
+            } else {
+                unavailableView
+            }
         case .network:
             networkSection(store.latest.network)
         case .disk:
@@ -80,6 +88,28 @@ struct PopoverView: View {
     private var waitingView: some View {
         Text("等待采样…")
             .foregroundStyle(.secondary)
+    }
+
+    private var unavailableView: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("温度不可用")
+                .font(.headline)
+            Text("本机读不到温度传感器（多见于 Intel 机型，或系统更新改动了传感器接口）。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func temperatureSection(_ temperature: TemperatureSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            header("温度", value: Format.temperature(temperature.celsius))
+            valueChart(store.history(.temperature))
+            Text("平均 \(Format.temperature(temperature.average)) · 取 \(temperature.sensorCount) 个晶粒传感器的最高值 · 每 5 秒更新")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     // MARK: - 各模块区块
@@ -181,6 +211,22 @@ struct PopoverView: View {
         .chartXAxis(.hidden)
         .chartYAxis(.hidden)
         .chartYScale(domain: 0...1)
+        .frame(height: 44)
+    }
+
+    /// 纵轴自适应的曲线（温度等非比例数值用）。
+    private func valueChart(_ values: [Double]) -> some View {
+        let lower = (values.min() ?? 0) - 3
+        let upper = (values.max() ?? 1) + 3
+        return Chart(Array(values.enumerated()), id: \.offset) { point in
+            AreaMark(x: .value("时间", point.offset), y: .value("值", point.element))
+                .foregroundStyle(Color.accentColor.opacity(0.15))
+            LineMark(x: .value("时间", point.offset), y: .value("值", point.element))
+                .foregroundStyle(Color.accentColor)
+        }
+        .chartXAxis(.hidden)
+        .chartYAxis(.hidden)
+        .chartYScale(domain: lower...max(lower + 1, upper))
         .frame(height: 44)
     }
 

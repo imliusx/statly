@@ -7,6 +7,7 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
     case appearance
     case cpu
     case memory
+    case temperature
     case network
     case disk
     case about
@@ -19,6 +20,7 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .appearance: return "外观"
         case .cpu: return "CPU"
         case .memory: return "内存"
+        case .temperature: return "温度"
         case .network: return "网络"
         case .disk: return "磁盘"
         case .about: return "关于"
@@ -31,6 +33,7 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .appearance: return "paintbrush"
         case .cpu: return "cpu"
         case .memory: return "memorychip"
+        case .temperature: return "thermometer"
         case .network: return "network"
         case .disk: return "internaldrive"
         case .about: return "info.circle"
@@ -42,6 +45,7 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .cpu: return .cpu
         case .memory: return .memory
+        case .temperature: return .temperature
         case .network: return .network
         case .disk: return .disk
         default: return nil
@@ -192,17 +196,20 @@ struct SettingsDetailView: View {
     @ViewBuilder
     private func modulePage(_ module: ModuleID) -> some View {
         let isLastEnabled = settings.enabledModules == [module]
+        let unsupported = module == .temperature && !store.isTemperatureAvailable
 
         Section {
             Toggle("在状态栏显示", isOn: moduleBinding(module))
-                .disabled(isLastEnabled)
+                .disabled(isLastEnabled || unsupported)
         } footer: {
-            if isLastEnabled {
+            if unsupported {
+                footnote("本机读不到温度传感器（多见于 Intel 机型，或系统更新改动了传感器接口）。")
+            } else if isLastEnabled {
                 footnote("至少需要保留一个模块。")
             }
         }
 
-        if settings.enabledModules.contains(module) {
+        if settings.enabledModules.contains(module), !unsupported {
             Section {
                 previewStrip([module])
             } header: {
@@ -211,6 +218,9 @@ struct SettingsDetailView: View {
         }
 
         Section {
+            LabeledContent("采样间隔") {
+                Text(module == .temperature ? "5 秒（温度慢变，独立节流）" : "跟随通用设置")
+            }
             ForEach(Array(moduleFacts(module).enumerated()), id: \.offset) { _, fact in
                 LabeledContent(fact.0) {
                     Text(fact.1)
@@ -237,6 +247,12 @@ struct SettingsDetailView: View {
                 ("状态栏", "已用内存占比"),
                 ("悬停", "已用 / 总量与内存压力"),
                 ("详情", "占用曲线、App / 联动 / 已压缩明细、内存占用最高的 5 个进程"),
+            ]
+        case .temperature:
+            return [
+                ("状态栏", "最高晶粒温度"),
+                ("悬停", "最高值、平均值与传感器个数"),
+                ("详情", "温度曲线与采样说明"),
             ]
         case .network:
             return [

@@ -19,7 +19,7 @@
 | 指标 | 预算 |
 |------|------|
 | 常驻内存（弹窗关闭时 RSS） | < 35 MB |
-| 平均 CPU（2s 刷新，4 模块全开，Apple Silicon） | < 0.3% |
+| 平均 CPU（2s 刷新，全模块开启，Apple Silicon） | < 0.3% |
 | 能耗 | 活动监视器 Energy Impact ≈ 0；powermetrics 实测对比空载基线 |
 | 每个刷新周期的 timer 唤醒次数 | 1 次（所有模块合并采样） |
 | App 包体积 | < 10 MB |
@@ -51,6 +51,7 @@
 | 磁盘容量 | `URL.resourceValues`（`volumeAvailableCapacityForImportantUsage`） | 与 Finder 显示一致 |
 | 磁盘 I/O 速度 | IOKit `IOBlockStorageDriver` → `Statistics` | 累计读写字节差值 |
 | Top 进程 | libproc（`proc_listallpids` + `proc_pidinfo`） | **仅弹窗打开时采样**，不进常驻路径 |
+| 温度 | IOHIDEventSystemClient（**私有接口**） | 无公开 API；只取 4 个晶粒传感器的最高值，独立按 5 秒节流 |
 
 ## 5. 架构
 
@@ -83,7 +84,7 @@ Statly/
 
 ## 7. 功能克制（scope 上的轻量）
 
-- 1.0 只有 4 个模块：CPU、内存、网速、磁盘。
+- 1.0 共 5 个模块：CPU、内存、温度、网速、磁盘。
 - 状态栏格式全局统一为「标签 + 图形」：圆环+百分比（默认）/ 文本，网速为双行速率。
 - 设置一页放完。
 - 卸载 = 删除 app + 一个 plist，宣传页明说。
@@ -95,7 +96,7 @@ Statly/
 - **M1 MVP**（约 1 周）：CPU + 内存全链路（采样 → 状态栏 → 弹窗 → 设置开关），验证架构与预算可行性——**M1 结束即做第一次能耗实测**。
 - **M2 补齐**（约 1 周）：网速、磁盘、状态栏样式、Swift Charts 历史曲线、配置持久化。
 - **M3 发布 1.0**（约 1 周）：Top 进程（按需）、深浅色、性能预算逐项验收（Instruments + powermetrics）、签名公证、DMG、检查更新、Homebrew cask。
-- **V2 待办池**：温度/风扇（SMC / IOHIDEventSystemClient）、GPU、电池、阈值告警、多语言、Sparkle、App Store 版评估。
+- **V2 待办池**：风扇转速、GPU、电池、阈值告警、多语言、Sparkle、App Store 版评估。
 
 ## 9. 风险
 

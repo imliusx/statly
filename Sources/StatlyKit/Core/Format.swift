@@ -34,6 +34,11 @@ public enum Format {
         return String(format: "%.2f GB/s", mb / 1024)
     }
 
+    /// 温度："45°C"（四舍五入到整度）
+    public static func temperature(_ celsius: Double) -> String {
+        String(format: "%.0f°C", max(0, celsius))
+    }
+
     /// 磁盘容量（十进制，与 Finder 口径一致）："118G" "1.2T"
     public static func diskShort(_ bytes: UInt64) -> String {
         let gb = Double(bytes) / 1_000_000_000

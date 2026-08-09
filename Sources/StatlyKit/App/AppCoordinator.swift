@@ -18,13 +18,14 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
     private var lastSnapshot = SystemSnapshot()
 
     /// NSStatusItem 后创建的排在左侧，倒序创建让默认顺序为 CPU · MEM · 网络 · 磁盘。
-    private static let creationOrder: [ModuleID] = [.disk, .network, .memory, .cpu]
+    private static let creationOrder: [ModuleID] = [.disk, .network, .temperature, .memory, .cpu]
 
     func start() {
         popover.behavior = .transient
         popover.animates = false
         popover.delegate = self
 
+        store.isTemperatureAvailable = samplers.isTemperatureAvailable
         rebuildStatusItems()
         bindSettings()
         observeScreenSleep()

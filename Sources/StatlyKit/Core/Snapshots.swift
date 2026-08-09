@@ -82,16 +82,43 @@ public struct DiskSnapshot: Sendable {
     }
 }
 
+public struct TemperatureSnapshot: Sendable {
+    /// 最高晶粒温度（摄氏度）
+    public let celsius: Double
+    /// 采样传感器的平均温度
+    public let average: Double
+    public let sensorCount: Int
+
+    /// 映射到 0...1，供状态栏圆环使用。30°C 以下算凉，100°C 视为满。
+    public var heatFraction: Double {
+        min(max((celsius - 30) / 70, 0), 1)
+    }
+
+    public init(celsius: Double, average: Double, sensorCount: Int) {
+        self.celsius = celsius
+        self.average = average
+        self.sensorCount = sensorCount
+    }
+}
+
 /// 一次采样周期产出的完整快照。未启用或首次采样无差值的模块为 nil。
 public struct SystemSnapshot: Sendable {
     public var cpu: CPUSnapshot?
     public var memory: MemorySnapshot?
+    public var temperature: TemperatureSnapshot?
     public var network: NetworkSnapshot?
     public var disk: DiskSnapshot?
 
-    public init(cpu: CPUSnapshot? = nil, memory: MemorySnapshot? = nil, network: NetworkSnapshot? = nil, disk: DiskSnapshot? = nil) {
+    public init(
+        cpu: CPUSnapshot? = nil,
+        memory: MemorySnapshot? = nil,
+        temperature: TemperatureSnapshot? = nil,
+        network: NetworkSnapshot? = nil,
+        disk: DiskSnapshot? = nil
+    ) {
         self.cpu = cpu
         self.memory = memory
+        self.temperature = temperature
         self.network = network
         self.disk = disk
     }

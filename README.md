@@ -1,6 +1,6 @@
 # Statly
 
-macOS 状态栏系统监控：CPU · 内存 · 网速 · 磁盘。
+macOS 状态栏系统监控：CPU · 内存 · 温度 · 网速 · 磁盘。
 
 **主打轻量**——只做四件事，但做到最省。无后台进程、无权限弹窗、无第三方依赖，卸载 = 删除 App + 一个 plist。
 
@@ -42,11 +42,13 @@ make app        # xcodebuild Release 打包到 dist/Statly.app
 Sources/StatlyKit/
 ├── App/        入口、AppCoordinator（采样循环、状态栏、弹窗、设置窗口的总协调）
 ├── Core/       调度器（单 timer 合并唤醒）、环形历史缓冲、等宽格式化、设置模型
-├── Samplers/   host_processor_info / host_statistics64 / getifaddrs / IOKit
+├── Samplers/   host_processor_info / host_statistics64 / getifaddrs / IOKit / IOHID 温度
 └── UI/         NSStatusItem 渲染（变了才画）、SwiftUI 弹窗与设置
 ```
 
-全部指标来自用户态公开 API，无需任何特殊权限。
+除温度外，全部指标来自用户态公开 API，无需任何特殊权限。
+
+温度没有公开 API，走的是 `IOHIDEventSystemClient` 私有接口：读不到时该模块自动降级为不可用，不影响其余模块；也因此本项目只做直接分发，不上 App Store。
 
 ## 路线图
 

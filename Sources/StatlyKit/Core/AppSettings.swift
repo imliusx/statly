@@ -6,11 +6,15 @@ import ServiceManagement
 public final class AppSettings: ObservableObject {
     public static let allowedIntervals: [TimeInterval] = [1, 2, 5]
 
+    /// 配置结构版本，用于新增模块等迁移
+    private static let schemaVersion = 2
+
     private enum Key {
         static let refreshInterval = "refreshInterval"
         static let enabledModules = "enabledModules"
         static let statusStyle = "statusStyle"
         static let labelStyle = "labelStyle"
+        static let schemaVersion = "schemaVersion"
     }
 
     private let defaults: UserDefaults
@@ -40,11 +44,17 @@ public final class AppSettings: ObservableObject {
         self.refreshInterval = Self.allowedIntervals.contains(storedInterval) ? storedInterval : 2
 
         if let raw = defaults.stringArray(forKey: Key.enabledModules) {
-            let modules = Set(raw.compactMap(ModuleID.init(rawValue:)))
+            var modules = Set(raw.compactMap(ModuleID.init(rawValue:)))
+            // 迁移到 v2：温度模块是后加的，老配置里没有它，为已有用户默认开启，
+            // 否则新功能会一直藏在设置里不出现
+            if defaults.integer(forKey: Key.schemaVersion) < 2 {
+                modules.insert(.temperature)
+            }
             self.enabledModules = modules.isEmpty ? Set(ModuleID.allCases) : modules
         } else {
             self.enabledModules = Set(ModuleID.allCases)
         }
+        defaults.set(Self.schemaVersion, forKey: Key.schemaVersion)
 
         if let raw = defaults.string(forKey: Key.statusStyle), let style = StatusStyle(rawValue: raw) {
             self.statusStyle = style

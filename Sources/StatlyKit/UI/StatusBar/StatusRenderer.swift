@@ -45,7 +45,8 @@ enum StatusRenderer {
     }
 
     private enum Graphic {
-        case ring(Double)
+        /// 圆环 + 右侧读数。widthTemplate 决定读数区定宽，避免数值变化引起抖动。
+        case ring(fraction: Double, text: String, widthTemplate: String)
         case valueText(String)
         case rateColumns(String, String)
     }
@@ -69,6 +70,26 @@ enum StatusRenderer {
                 + " · 压力\(memory.pressure.displayName)"
             return usageContent(style: style, fraction: memory.usedFraction, tooltip: tooltip)
 
+        case .temperature:
+            guard let temperature = snapshot.temperature else { return placeholderContent(module) }
+            // 量化到显示的整度：圆环角度与读数严格对应，亚度变化不重绘
+            let rounded = temperature.celsius.rounded()
+            let text = Format.temperature(rounded)
+            let tooltip = "\u{6e29}\u{5ea6} \(text) \u{b7} \u{5e73}\u{5747} \(Format.temperature(temperature.average))"
+                + " \u{b7} \(temperature.sensorCount) \u{4e2a}\u{4f20}\u{611f}\u{5668}"
+            switch style {
+            case .text:
+                let graphic = Graphic.valueText(text)
+                return ModuleContent(graphic: graphic, key: graphicKey(graphic), tooltip: tooltip)
+            case .ring:
+                let graphic = Graphic.ring(
+                    fraction: TemperatureSnapshot(celsius: rounded, average: 0, sensorCount: 0).heatFraction,
+                    text: text,
+                    widthTemplate: "88\u{b0}C"
+                )
+                return ModuleContent(graphic: graphic, key: graphicKey(graphic), tooltip: tooltip)
+            }
+
         case .network:
             let rx = snapshot.network?.rxPerSecond ?? 0
             let tx = snapshot.network?.txPerSecond ?? 0
@@ -88,11 +109,8 @@ enum StatusRenderer {
                 let graphic = Graphic.valueText(Format.diskShort(disk.freeCapacity))
                 return ModuleContent(graphic: graphic, key: graphicKey(graphic), tooltip: tooltip)
             case .ring:
-                return ModuleContent(
-                    graphic: quantizedRing(disk.usedFraction),
-                    key: "ring-\(quantizePercent(disk.usedFraction))",
-                    tooltip: tooltip
-                )
+                let graphic = percentRing(disk.usedFraction)
+                return ModuleContent(graphic: graphic, key: graphicKey(graphic), tooltip: tooltip)
             }
         }
     }
@@ -106,7 +124,7 @@ enum StatusRenderer {
         let graphic: Graphic
         switch style {
         case .text: graphic = .valueText(Format.percent(fraction))
-        case .ring: graphic = quantizedRing(fraction)
+        case .ring: graphic = percentRing(fraction)
         }
         return ModuleContent(graphic: graphic, key: graphicKey(graphic), tooltip: tooltip)
     }
@@ -115,9 +133,14 @@ enum StatusRenderer {
         ModuleContent(graphic: .valueText("–"), key: "ph", tooltip: "Statly · \(module.displayName)")
     }
 
-    /// 圆环量化到整数百分比：key 与图像严格对应、数值不变不重绘。
-    private static func quantizedRing(_ fraction: Double) -> Graphic {
-        .ring(Double(quantizePercent(fraction)) / 100)
+    /// 百分比圆环，量化到整数百分比：key 与图像严格对应、数值不变不重绘。
+    private static func percentRing(_ fraction: Double) -> Graphic {
+        let percent = quantizePercent(fraction)
+        return .ring(
+            fraction: Double(percent) / 100,
+            text: Format.percent(Double(percent) / 100, padded: false),
+            widthTemplate: "88%"
+        )
     }
 
     private static func quantizePercent(_ fraction: Double) -> Int {
@@ -126,7 +149,7 @@ enum StatusRenderer {
 
     private static func graphicKey(_ graphic: Graphic) -> String {
         switch graphic {
-        case .ring(let fraction): return "ring-\(quantizePercent(fraction))"
+        case .ring(_, let text, _): return "ring-\(text)"
         case .valueText(let value): return "val-\(value)"
         case .rateColumns(let down, let up): return "rate-\(down)|\(up)"
         }
@@ -136,6 +159,7 @@ enum StatusRenderer {
         switch module {
         case .cpu: return "CPU"
         case .memory: return "MEM"
+        case .temperature: return "TMP"
         case .network: return "NET"
         case .disk: return "SSD"
         }
@@ -145,6 +169,7 @@ enum StatusRenderer {
         switch module {
         case .cpu: return "cpu"
         case .memory: return "memorychip"
+        case .temperature: return "thermometer"
         case .network: return "network"
         case .disk: return "internaldrive"
         }
@@ -268,12 +293,12 @@ enum StatusRenderer {
 
     private static func graphicBlock(_ graphic: Graphic) -> Block {
         switch graphic {
-        case .ring(let fraction):
-            // 圆环 + 右侧实时百分比。数字左对齐紧贴圆环；宽度按两位数（"88%"）定宽，
-            // 最常见的两位数值零余量，一位数留少量右侧空隙，100% 时临时加宽。
+        case .ring(let fraction, let value, let widthTemplate):
+            // 圆环 + 右侧读数。数字左对齐紧贴圆环；宽度按模板定宽，
+            // 最常见的两位数值零余量，一位数留少量右侧空隙，超长时临时加宽。
             let diameter: CGFloat = 15
-            let text = attributed(Format.percent(fraction, padded: false), ringValueFont)
-            let template = attributed("88%", ringValueFont)
+            let text = attributed(value, ringValueFont)
+            let template = attributed(widthTemplate, ringValueFont)
             let textZoneWidth = max(ceil(text.size().width), ceil(template.size().width))
             let gap: CGFloat = 4
             return (

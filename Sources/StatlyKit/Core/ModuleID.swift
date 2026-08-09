@@ -4,6 +4,7 @@ import Foundation
 public enum ModuleID: String, CaseIterable, Codable, Sendable {
     case cpu
     case memory
+    case temperature
     case network
     case disk
 
@@ -11,6 +12,7 @@ public enum ModuleID: String, CaseIterable, Codable, Sendable {
         switch self {
         case .cpu: return "CPU"
         case .memory: return "内存"
+        case .temperature: return "温度"
         case .network: return "网络"
         case .disk: return "磁盘"
         }
