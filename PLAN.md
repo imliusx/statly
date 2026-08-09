@@ -64,7 +64,7 @@ Statly/
 │   └─ Formatters           字节/速率/百分比，等宽数字
 ├─ Samplers/       CPUSampler / MemorySampler / NetworkSampler / DiskSampler
 ├─ UI/
-│   ├─ StatusBar/           每模块一个 NSStatusItem；文本 / 迷你图两种样式
+│   ├─ StatusBar/           每模块一个 NSStatusItem；圆环 / 文本两种样式
 │   ├─ Popover/             SwiftUI：历史曲线（Swift Charts）、分项、Top 进程
 │   └─ Settings/            单页：模块开关、刷新率、样式、开机自启
 └─ Resources/
@@ -77,14 +77,14 @@ Statly/
 3. **看不见就停**：锁屏 / 显示器休眠（`NSWorkspace` 通知）暂停采样，唤醒恢复。
 4. **按需分级**：Top 进程、提高刷新率等重操作只在弹窗打开期间生效；弹窗和设置窗口关闭即释放。
 5. **等宽数字 + 固定 item 宽度**：`monospacedDigit`，避免数字跳动引起整条菜单栏重排。
-6. **迷你图用离屏 CGContext 画成小图**，无 CALayer 动画、无过渡效果。
+6. **圆环等图形用离屏 CGContext 画成模板图**，无 CALayer 动画、无过渡效果。
 7. 刷新率可配 1s / 2s / 5s，**默认 2s**。
 8. 每个 PR 自问：这段代码在常驻路径上吗？在的话，它每 2 秒的成本是多少？
 
 ## 7. 功能克制（scope 上的轻量）
 
 - 1.0 只有 4 个模块：CPU、内存、网速、磁盘。
-- 状态栏格式全局统一为「短标签 + 图形」：圆环（默认）/ 文本 / 迷你图（CPU·内存），网速为双行速率。
+- 状态栏格式全局统一为「标签 + 图形」：圆环+百分比（默认）/ 文本，网速为双行速率。
 - 设置一页放完。
 - 卸载 = 删除 app + 一个 plist，宣传页明说。
 - 刘海屏应对：模块可单独开关；模块间距为系统默认行为（曾试验合并单图标模式，因交互不如独立图标自然而放弃）。
@@ -93,7 +93,7 @@ Statly/
 
 - **M0 脚手架**（1–2 天）：Xcode 工程、菜单栏应用骨架、空 NSStatusItem、设置窗壳、SMAppService 自启。
 - **M1 MVP**（约 1 周）：CPU + 内存全链路（采样 → 状态栏 → 弹窗 → 设置开关），验证架构与预算可行性——**M1 结束即做第一次能耗实测**。
-- **M2 补齐**（约 1 周）：网速、磁盘、迷你图样式、Swift Charts 历史曲线、配置持久化。
+- **M2 补齐**（约 1 周）：网速、磁盘、状态栏样式、Swift Charts 历史曲线、配置持久化。
 - **M3 发布 1.0**（约 1 周）：Top 进程（按需）、深浅色、性能预算逐项验收（Instruments + powermetrics）、签名公证、DMG、检查更新、Homebrew cask。
 - **V2 待办池**：温度/风扇（SMC / IOHIDEventSystemClient）、GPU、电池、阈值告警、多语言、Sparkle、App Store 版评估。
 

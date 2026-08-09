@@ -53,23 +53,11 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
         let style = settings.statusStyle
         let labelStyle = settings.labelStyle
         for (module, controller) in controllers {
-            // 仅迷你图样式需要历史数据，其余模式不做无谓的数组拷贝
-            let history: [Double]
-            if style == .graph {
-                switch module {
-                case .cpu: history = store.history(.cpuTotal)
-                case .memory: history = store.history(.memoryUsedFraction)
-                default: history = []
-                }
-            } else {
-                history = []
-            }
             let output = StatusRenderer.render(
                 module: module,
                 snapshot: lastSnapshot,
                 style: style,
-                labelStyle: labelStyle,
-                history: history
+                labelStyle: labelStyle
             )
             controller.update(output)
         }

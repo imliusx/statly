@@ -1,6 +1,6 @@
 import Foundation
 
-/// 定长环形缓冲，只存原始 Double，供历史曲线 / 迷你图使用。
+/// 定长环形缓冲，只存原始 Double，供详情弹窗的历史曲线使用。
 public struct RingBuffer {
     public let capacity: Int
     private var storage: [Double]

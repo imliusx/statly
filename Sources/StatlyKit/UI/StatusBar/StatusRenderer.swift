@@ -3,7 +3,7 @@ import AppKit
 /// 把快照渲染成状态栏内容。统一格式：标签块 + 图形块，全部离屏绘制成模板图
 /// （黑色 + isTemplate），由系统适配深浅色。
 /// 标签块四种样式：图标（SF Symbols）/ 竖排小字 / 横排文本 / 隐藏。
-/// 图形块：圆环+百分比 / 迷你图 / 等宽数值 / 双行速率。
+/// 图形块：圆环+百分比 / 等宽数值 / 双行速率。
 enum StatusRenderer {
 
     // MARK: - 入口
@@ -13,10 +13,9 @@ enum StatusRenderer {
         module: ModuleID,
         snapshot: SystemSnapshot,
         style: StatusStyle,
-        labelStyle: LabelStyle,
-        history: [Double]
+        labelStyle: LabelStyle
     ) -> RenderOutput {
-        let content = moduleContent(module: module, snapshot: snapshot, style: style, history: history)
+        let content = moduleContent(module: module, snapshot: snapshot, style: style)
 
         // 纯文本快速路径：不需要绘图，直接走 button.title（等宽字体已在 item 上配置）
         if case .valueText(let value) = content.graphic {
@@ -47,7 +46,6 @@ enum StatusRenderer {
 
     private enum Graphic {
         case ring(Double)
-        case sparkline([Double])
         case valueText(String)
         case rateColumns(String, String)
     }
@@ -55,8 +53,7 @@ enum StatusRenderer {
     private static func moduleContent(
         module: ModuleID,
         snapshot: SystemSnapshot,
-        style: StatusStyle,
-        history: [Double]
+        style: StatusStyle
     ) -> ModuleContent {
         switch module {
         case .cpu:
@@ -64,13 +61,13 @@ enum StatusRenderer {
             let tooltip = "CPU \(Format.percent(cpu.totalUsage, padded: false))"
                 + " · 用户 \(Format.percent(cpu.userUsage, padded: false))"
                 + " · 系统 \(Format.percent(cpu.systemUsage, padded: false))"
-            return usageContent(style: style, fraction: cpu.totalUsage, history: history, tooltip: tooltip)
+            return usageContent(style: style, fraction: cpu.totalUsage, tooltip: tooltip)
 
         case .memory:
             guard let memory = snapshot.memory else { return placeholderContent(module) }
             let tooltip = "内存 \(Format.memoryGB(memory.used)) / \(Format.memoryGB(memory.total))"
                 + " · 压力\(memory.pressure.displayName)"
-            return usageContent(style: style, fraction: memory.usedFraction, history: history, tooltip: tooltip)
+            return usageContent(style: style, fraction: memory.usedFraction, tooltip: tooltip)
 
         case .network:
             let rx = snapshot.network?.rxPerSecond ?? 0
@@ -90,9 +87,12 @@ enum StatusRenderer {
             case .text:
                 let graphic = Graphic.valueText(Format.diskShort(disk.freeCapacity))
                 return ModuleContent(graphic: graphic, key: graphicKey(graphic), tooltip: tooltip)
-            case .ring, .graph:
-                // 磁盘占用几乎静态，迷你图无意义，回落为圆环
-                return ModuleContent(graphic: quantizedRing(disk.usedFraction), key: "ring-\(quantizePercent(disk.usedFraction))", tooltip: tooltip)
+            case .ring:
+                return ModuleContent(
+                    graphic: quantizedRing(disk.usedFraction),
+                    key: "ring-\(quantizePercent(disk.usedFraction))",
+                    tooltip: tooltip
+                )
             }
         }
     }
@@ -101,14 +101,12 @@ enum StatusRenderer {
     private static func usageContent(
         style: StatusStyle,
         fraction: Double,
-        history: [Double],
         tooltip: String
     ) -> ModuleContent {
         let graphic: Graphic
         switch style {
         case .text: graphic = .valueText(Format.percent(fraction))
         case .ring: graphic = quantizedRing(fraction)
-        case .graph: graphic = .sparkline(Array(history.suffix(24)))
         }
         return ModuleContent(graphic: graphic, key: graphicKey(graphic), tooltip: tooltip)
     }
@@ -129,7 +127,6 @@ enum StatusRenderer {
     private static func graphicKey(_ graphic: Graphic) -> String {
         switch graphic {
         case .ring(let fraction): return "ring-\(quantizePercent(fraction))"
-        case .sparkline(let values): return "spark-" + values.map { String(Int($0 * 100)) }.joined(separator: ",")
         case .valueText(let value): return "val-\(value)"
         case .rateColumns(let down, let up): return "rate-\(down)|\(up)"
         }
@@ -299,12 +296,6 @@ enum StatusRenderer {
                 }
             )
 
-        case .sparkline(let values):
-            return (
-                size: NSSize(width: 30, height: 15),
-                draw: { rect in drawSparkline(in: rect, values: values) }
-            )
-
         case .valueText(let value):
             let text = attributed(value, valueFont)
             let textSize = text.size()
@@ -363,27 +354,5 @@ enum StatusRenderer {
         )
         NSColor.black.setStroke()
         progress.stroke()
-    }
-
-    /// 柱状迷你图（0...1 数值），离屏绘制、无动画。
-    private static func drawSparkline(in rect: NSRect, values: [Double], barCount: Int = 24) {
-        NSColor.black.withAlphaComponent(0.25).setFill()
-        NSBezierPath(rect: NSRect(x: rect.minX, y: rect.minY, width: rect.width, height: 1)).fill()
-
-        guard !values.isEmpty else { return }
-        NSColor.black.setFill()
-        let barWidth = rect.width / CGFloat(barCount)
-        let tail = values.suffix(barCount)
-        let startIndex = barCount - tail.count
-        for (offset, value) in tail.enumerated() {
-            let height = max(1, CGFloat(min(max(value, 0), 1)) * rect.height)
-            let bar = NSRect(
-                x: rect.minX + CGFloat(startIndex + offset) * barWidth,
-                y: rect.minY,
-                width: max(1, barWidth - 1),
-                height: height
-            )
-            NSBezierPath(rect: bar).fill()
-        }
     }
 }

@@ -21,13 +21,11 @@ public enum ModuleID: String, CaseIterable, Codable, Sendable {
 public enum StatusStyle: String, Codable, CaseIterable, Sendable {
     case ring
     case text
-    case graph
 
     public var displayName: String {
         switch self {
         case .ring: return "圆环"
         case .text: return "文本"
-        case .graph: return "迷你图"
         }
     }
 }

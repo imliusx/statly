@@ -178,4 +178,21 @@ final class SettingsViewTests: XCTestCase {
         _ = pageImage(.cpu, settings, MetricStore())
         XCTAssertEqual(settings.enabledModules, [.cpu])
     }
+
+    /// 占用样式只保留圆环与文本。
+    func testStatusStyleOptions() {
+        XCTAssertEqual(StatusStyle.allCases, [.ring, .text])
+        XCTAssertNil(StatusStyle(rawValue: "graph"), "迷你图样式应已移除")
+    }
+
+    /// 旧版本存过 "graph" 的用户，读设置时要回落到圆环而不是崩溃或留空。
+    func testStoredGraphStyleFallsBackToRing() {
+        let suite = "statly.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        addTeardownBlock { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        defaults.set("graph", forKey: "statusStyle")
+
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertEqual(settings.statusStyle, .ring)
+    }
 }

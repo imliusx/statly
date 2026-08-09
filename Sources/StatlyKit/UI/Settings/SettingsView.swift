@@ -175,7 +175,7 @@ struct SettingsDetailView: View {
         } header: {
             Text("状态栏")
         } footer: {
-            footnote("样式统一应用到所有模块。迷你图适用于 CPU 与内存，磁盘占用几乎不变会显示为圆环。")
+            footnote("样式统一应用到所有模块。精确数值可悬停图标查看。")
         }
 
         Section {
@@ -373,8 +373,7 @@ struct SettingsDetailView: View {
             module: module,
             snapshot: store.latest,
             style: settings.statusStyle,
-            labelStyle: settings.labelStyle,
-            history: previewHistory(module)
+            labelStyle: settings.labelStyle
         )
         switch output.content {
         case .text(let text):
@@ -384,15 +383,6 @@ struct SettingsDetailView: View {
             Image(nsImage: image)
                 .renderingMode(.template)
                 .foregroundStyle(.primary)
-        }
-    }
-
-    private func previewHistory(_ module: ModuleID) -> [Double] {
-        guard settings.statusStyle == .graph else { return [] }
-        switch module {
-        case .cpu: return store.history(.cpuTotal)
-        case .memory: return store.history(.memoryUsedFraction)
-        default: return []
         }
     }
 
