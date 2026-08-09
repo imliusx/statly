@@ -106,7 +106,7 @@ final class SettingsViewTests: XCTestCase {
         XCTAssertNotEqual(ring, text, "切换占用样式后预览应当改变")
     }
 
-    /// 侧边栏外壳：用真实窗口布局验证 NavigationSplitView 能正常构建。
+    /// 侧边栏外壳：用真实窗口布局验证结构能正常构建。
     func testSettingsWindowLaysOut() {
         let controller = SettingsWindowController(settings: makeSettings(), store: populatedStore())
         guard let window = controller.window else { return XCTFail("窗口未创建") }
@@ -114,6 +114,47 @@ final class SettingsViewTests: XCTestCase {
         XCTAssertGreaterThan(window.frame.width, 400)
         XCTAssertNotNil(window.contentViewController)
         window.close()
+    }
+
+    /// 两侧面板都要有透窗玻璃材质，且窗口本身透明（否则 behindWindow 材质无效）。
+    func testBothPanesUseGlassMaterial() {
+        let controller = SettingsWindowController(settings: makeSettings(), store: populatedStore())
+        guard let window = controller.window else { return XCTFail("窗口未创建") }
+        window.contentView?.layoutSubtreeIfNeeded()
+
+        XCTAssertFalse(window.isOpaque, "窗口需非不透明，材质才能透出后方内容")
+        XCTAssertEqual(window.backgroundColor, .clear)
+        XCTAssertTrue(window.titlebarAppearsTransparent)
+
+        let effects = descendants(of: window.contentView, ofType: NSVisualEffectView.self)
+        XCTAssertGreaterThanOrEqual(effects.count, 2, "侧边栏与内容区都应有玻璃材质")
+        XCTAssertTrue(
+            effects.allSatisfy { $0.blendingMode == .behindWindow },
+            "材质应为 behindWindow 混合"
+        )
+        window.close()
+    }
+
+    /// 侧边栏不可拖拽改宽、不可折叠：视图层级里不应出现分栏视图。
+    func testSidebarIsFixedWidth() {
+        let controller = SettingsWindowController(settings: makeSettings(), store: populatedStore())
+        guard let window = controller.window else { return XCTFail("窗口未创建") }
+        window.contentView?.layoutSubtreeIfNeeded()
+        XCTAssertTrue(
+            descendants(of: window.contentView, ofType: NSSplitView.self).isEmpty,
+            "存在 NSSplitView 说明侧边栏仍可拖拽调整"
+        )
+        window.close()
+    }
+
+    private func descendants<T: NSView>(of root: NSView?, ofType type: T.Type) -> [T] {
+        guard let root else { return [] }
+        var found: [T] = []
+        if let match = root as? T { found.append(match) }
+        for subview in root.subviews {
+            found.append(contentsOf: descendants(of: subview, ofType: type))
+        }
+        return found
     }
 
     func testSectionModuleMapping() {

@@ -27,26 +27,13 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
 
     var symbol: String {
         switch self {
-        case .general: return "gearshape.fill"
-        case .appearance: return "paintbrush.fill"
-        case .cpu: return "cpu.fill"
-        case .memory: return "memorychip.fill"
+        case .general: return "gearshape"
+        case .appearance: return "paintbrush"
+        case .cpu: return "cpu"
+        case .memory: return "memorychip"
         case .network: return "network"
-        case .disk: return "internaldrive.fill"
-        case .about: return "info"
-        }
-    }
-
-    /// 侧边栏图标块底色，沿用系统设置的彩色图标语汇
-    var tint: Color {
-        switch self {
-        case .general: return .gray
-        case .appearance: return .indigo
-        case .cpu: return .blue
-        case .memory: return .green
-        case .network: return .purple
-        case .disk: return .orange
-        case .about: return .secondary
+        case .disk: return "internaldrive"
+        case .about: return "info.circle"
         }
     }
 
@@ -62,9 +49,12 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
     }
 }
 
-/// 设置窗口外壳：左侧分区列表 + 右侧内容。内容本身在 SettingsDetailView，
-/// 拆开是因为 NavigationSplitView 无法被 ImageRenderer 渲染，页面内容单独出来才能测。
+/// 设置窗口外壳：定宽侧边栏 + 内容区，两侧都用系统材质做玻璃背景。
+/// 不用 NavigationSplitView：它的侧边栏可拖拽改宽、可折叠，这里要固定宽度。
 struct SettingsView: View {
+    /// 侧边栏固定宽度
+    private static let sidebarWidth: CGFloat = 178
+
     @ObservedObject var settings: AppSettings
     @ObservedObject var store: MetricStore
 
@@ -77,39 +67,30 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
-            List(SettingsSection.allCases, id: \.self, selection: $selection) { section in
-                SidebarRow(section: section)
-                    .tag(section)
-            }
-            .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(min: 168, ideal: 182, max: 230)
-        } detail: {
+        HStack(spacing: 0) {
+            sidebar
+                .frame(width: Self.sidebarWidth)
+                .background(VisualEffectBackground(material: .sidebar))
+
+            Divider()
+
             SettingsDetailView(section: selection, settings: settings, store: store)
-                .navigationTitle(selection.title)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(VisualEffectBackground(material: .underWindowBackground))
         }
-        .navigationSplitViewStyle(.balanced)
-        .frame(minWidth: 660, idealWidth: 700, minHeight: 420, idealHeight: 460)
+        .frame(minWidth: 660, idealWidth: 700, minHeight: 430, idealHeight: 470)
+        .ignoresSafeArea()
     }
-}
 
-/// 侧边栏行：彩色圆角图标块 + 标题（系统设置的视觉语汇）。
-private struct SidebarRow: View {
-    let section: SettingsSection
-
-    var body: some View {
-        HStack(spacing: 9) {
-            RoundedRectangle(cornerRadius: 5.5, style: .continuous)
-                .fill(section.tint.gradient)
-                .frame(width: 21, height: 21)
-                .overlay(
-                    Image(systemName: section.symbol)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white)
-                )
-            Text(section.title)
+    private var sidebar: some View {
+        List(SettingsSection.allCases, id: \.self, selection: $selection) { section in
+            Label(section.title, systemImage: section.symbol)
+                .tag(section)
         }
-        .padding(.vertical, 1)
+        .listStyle(.sidebar)
+        .scrollContentBackground(.hidden)
+        // 内容延伸到标题栏下方，留出红绿灯按钮的高度
+        .safeAreaInset(edge: .top) { Color.clear.frame(height: 26) }
     }
 }
 
@@ -123,18 +104,30 @@ struct SettingsDetailView: View {
     @State private var isCheckingUpdate = false
 
     var body: some View {
-        Form {
-            switch section {
-            case .general: generalPage
-            case .appearance: appearancePage
-            case .about: aboutPage
-            default:
-                if let module = section.module {
-                    modulePage(module)
+        VStack(alignment: .leading, spacing: 0) {
+            // 内容延伸到透明标题栏下方，这里自己画分区标题
+            Text(section.title)
+                .font(.title3)
+                .bold()
+                .padding(.horizontal, 20)
+                .padding(.top, 28)
+                .padding(.bottom, 2)
+
+            Form {
+                switch section {
+                case .general: generalPage
+                case .appearance: appearancePage
+                case .about: aboutPage
+                default:
+                    if let module = section.module {
+                        modulePage(module)
+                    }
                 }
             }
+            .formStyle(.grouped)
+            // 让下层的玻璃材质透出来
+            .scrollContentBackground(.hidden)
         }
-        .formStyle(.grouped)
     }
 
     // MARK: - 通用
