@@ -14,6 +14,9 @@ struct RenderOutput {
 
 /// 单个指标模块对应的 NSStatusItem。左键弹该模块详情，右键弹菜单。
 final class StatusItemController: NSObject {
+    /// 图标两侧的留白合计。系统 variableLength 默认给 16pt（每侧 8），显式指定可收紧模块间距。
+    private static let horizontalPadding: CGFloat = 8
+
     private let item: NSStatusItem
     private var lastKey: String?
     private var lastTooltip: String?
@@ -47,9 +50,11 @@ final class StatusItemController: NSObject {
         case .text(let text):
             button.image = nil
             button.title = text
+            item.length = NSStatusItem.variableLength
         case .image(let image):
             button.title = ""
             button.image = image
+            item.length = image.size.width + Self.horizontalPadding
         }
     }
 
