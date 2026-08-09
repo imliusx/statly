@@ -116,14 +116,16 @@ final class SettingsViewTests: XCTestCase {
         window.close()
     }
 
-    /// 两侧面板都要有透窗玻璃材质，且窗口本身透明（否则 behindWindow 材质无效）。
+    /// 两侧面板都要有透窗玻璃材质。
+    ///
+    /// 窗口必须保持不透明：behindWindow 材质由 NSVisualEffectView 自行采样窗口后方内容，
+    /// 不需要窗口透明；反而一旦设成非不透明，未被视图覆盖的边缘与圆角会露出黑边。
     func testBothPanesUseGlassMaterial() {
         let controller = SettingsWindowController(settings: makeSettings(), store: populatedStore())
         guard let window = controller.window else { return XCTFail("窗口未创建") }
         window.contentView?.layoutSubtreeIfNeeded()
 
-        XCTAssertFalse(window.isOpaque, "窗口需非不透明，材质才能透出后方内容")
-        XCTAssertEqual(window.backgroundColor, .clear)
+        XCTAssertTrue(window.isOpaque, "窗口需保持不透明，否则边缘与圆角会出现黑边")
         XCTAssertTrue(window.titlebarAppearsTransparent)
 
         let effects = descendants(of: window.contentView, ofType: NSVisualEffectView.self)

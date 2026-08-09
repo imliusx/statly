@@ -72,8 +72,7 @@ struct SettingsView: View {
                 .frame(width: Self.sidebarWidth)
                 .background(VisualEffectBackground(material: .sidebar))
 
-            Divider()
-
+            // 不放 Divider：硬分割线在玻璃背景上很突兀，两种材质本身已有明暗差别
             SettingsDetailView(section: selection, settings: settings, store: store)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(VisualEffectBackground(material: .underWindowBackground))
