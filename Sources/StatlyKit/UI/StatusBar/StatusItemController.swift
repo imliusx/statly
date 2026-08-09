@@ -14,8 +14,10 @@ struct RenderOutput {
 
 /// 单个指标模块对应的 NSStatusItem。左键弹该模块详情，右键弹菜单。
 final class StatusItemController: NSObject {
-    /// 图标两侧的留白合计。系统 variableLength 默认给 16pt（每侧 8），显式指定可收紧模块间距。
-    private static let horizontalPadding: CGFloat = 8
+    /// 图标两侧的额外留白。系统 variableLength 默认给 16pt，且每个状态栏项的窗口
+    /// 两侧还各有 8pt 固定装饰（公开 API 无法控制）。这里取 0，即 app 侧能做到的最紧，
+    /// 此时相邻模块图标之间的空白为 16pt（全部来自系统装饰）。
+    private static let horizontalPadding: CGFloat = 0
 
     private let item: NSStatusItem
     private var lastKey: String?
