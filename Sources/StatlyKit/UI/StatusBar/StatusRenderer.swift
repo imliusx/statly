@@ -318,9 +318,9 @@ enum StatusRenderer {
             let upArrow = attributed("↑", rateFont)
             let downValue = attributed(down, rateFont)
             let upValue = attributed(up, rateFont)
-            // compactRate 最宽输出 5 个字符（"99.9M" 等），模板取同宽；
+            // compactRate 最宽输出为 "88.8MB/s"，模板取同宽；
             // 箭头列固定在左、数值列右对齐，长度差被两列之间的空隙吸收，不抖动
-            let template = attributed("88.8M", rateFont)
+            let template = attributed("88.8MB/s", rateFont)
             let arrowWidth = ceil(max(downArrow.size().width, upArrow.size().width))
             let zone = NSSize(width: arrowWidth + 3 + ceil(template.size().width), height: 18)
             return (

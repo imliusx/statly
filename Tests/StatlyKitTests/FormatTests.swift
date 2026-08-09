@@ -14,12 +14,26 @@ final class FormatTests: XCTestCase {
         XCTAssertEqual(Format.percent(0.07, padded: false), "7%")
     }
 
-    func testCompactRate() {
-        XCTAssertEqual(Format.compactRate(0), "0K")
-        XCTAssertEqual(Format.compactRate(10 * 1024), "10K")
-        XCTAssertEqual(Format.compactRate(2_621_440), "2.5M")
-        XCTAssertEqual(Format.compactRate(1_610_612_736), "1.5G")
-        XCTAssertEqual(Format.compactRate(-5), "0K")
+    func testCompactRateCarriesUnit() {
+        XCTAssertEqual(Format.compactRate(0), "0KB/s")
+        XCTAssertEqual(Format.compactRate(10 * 1024), "10KB/s")
+        XCTAssertEqual(Format.compactRate(999 * 1024), "999KB/s")
+        XCTAssertEqual(Format.compactRate(2_621_440), "2.5MB/s")
+        XCTAssertEqual(Format.compactRate(1_610_612_736), "1.5GB/s")
+        XCTAssertEqual(Format.compactRate(-5), "0KB/s")
+    }
+
+    /// 状态栏为速率预留的宽度按最宽输出计算，别的分支不能超过它。
+    func testCompactRateNeverExceedsTemplateWidth() {
+        let template = "88.8MB/s"
+        let samples: [Double] = [0, 1, 1024, 999 * 1024, 1024 * 1024, 12.3 * 1_048_576,
+                                 99 * 1_048_576, 500 * 1_048_576, 5 * 1_073_741_824]
+        for value in samples {
+            XCTAssertLessThanOrEqual(
+                Format.compactRate(value).count, template.count,
+                "\(Format.compactRate(value)) 超出了模板宽度"
+            )
+        }
     }
 
     func testFullRate() {

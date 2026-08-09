@@ -15,14 +15,14 @@ public enum Format {
         return s
     }
 
-    /// 状态栏紧凑速率："0K" "999K" "1.2M" "12.3M" "999M" "1.5G"
+    /// 状态栏紧凑速率，带单位："0KB/s" "999KB/s" "1.2MB/s" "12.3MB/s" "1.5GB/s"
     public static func compactRate(_ bytesPerSecond: Double) -> String {
         let kb = max(0, bytesPerSecond) / 1024
-        if kb < 999.5 { return String(format: "%.0fK", kb) }
+        if kb < 999.5 { return String(format: "%.0fKB/s", kb) }
         let mb = kb / 1024
-        if mb < 99.95 { return String(format: "%.1fM", mb) }
-        if mb < 999.5 { return String(format: "%.0fM", mb) }
-        return String(format: "%.1fG", mb / 1024)
+        if mb < 99.95 { return String(format: "%.1fMB/s", mb) }
+        if mb < 999.5 { return String(format: "%.0fMB/s", mb) }
+        return String(format: "%.1fGB/s", mb / 1024)
     }
 
     /// 弹窗完整速率："1.2 MB/s"
