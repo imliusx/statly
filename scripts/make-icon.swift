@@ -36,39 +36,19 @@ let plate = NSRect(x: 100, y: 100, width: 824, height: 824)
 let center = NSPoint(x: canvas / 2, y: canvas / 2)
 let platePath = NSBezierPath(roundedRect: plate, xRadius: 185, yRadius: 185)
 
-// 底：深黑玻璃 —— 近黑渐变 + 环后柔光 + 对角高光 + 内侧亮边
-let base = NSGradient(
-    starting: NSColor(calibratedRed: 0.090, green: 0.095, blue: 0.110, alpha: 1),
-    ending: NSColor.black
+// 底：取自参考图的实测配色 —— 纯竖直渐变，顶部灰阶 111 线性落到 56% 处的纯黑，
+// 其后保持纯黑。经典的玻璃质感完全由这条渐变本身产生，无需额外高光层。
+// 数值由参考图的原始像素采样得来（用 colorAt 读会因色彩空间转换而虚高约 13%）。
+// 必须用 sRGB 指定：calibratedWhite 走的是另一套 gamma，渲染出来会明显偏亮。
+func srgbGray(_ level: Double) -> NSColor {
+    NSColor(srgbRed: level / 255, green: level / 255, blue: level / 255, alpha: 1)
+}
+let base = NSGradient(colorsAndLocations:
+    (srgbGray(111), 0.0),
+    (srgbGray(0), 0.56),
+    (srgbGray(0), 1.0)
 )
 base?.draw(in: platePath, angle: -90)
-
-NSGraphicsContext.saveGraphicsState()
-platePath.addClip()
-
-// 环后柔光：中心径向白光，营造玻璃内的微弱透亮感
-let glowPath = NSBezierPath(ovalIn: NSRect(x: center.x - 330, y: center.y - 330, width: 660, height: 660))
-let glow = NSGradient(colorsAndLocations:
-    (NSColor(white: 1, alpha: 0.09), 0.0),
-    (NSColor(white: 1, alpha: 0.00), 1.0)
-)
-glow?.draw(in: glowPath, relativeCenterPosition: .zero)
-
-// 对角玻璃高光：左上入射的镜面反光带
-let sheen = NSGradient(colorsAndLocations:
-    (NSColor(white: 1, alpha: 0.15), 0.00),
-    (NSColor(white: 1, alpha: 0.04), 0.38),
-    (NSColor(white: 1, alpha: 0.00), 0.60)
-)
-sheen?.draw(in: plate, angle: -60)
-
-// 内侧亮边：玻璃切面的细描边
-let rim = NSBezierPath(roundedRect: plate.insetBy(dx: 3, dy: 3), xRadius: 182, yRadius: 182)
-rim.lineWidth = 6
-NSColor(white: 1, alpha: 0.10).setStroke()
-rim.stroke()
-
-NSGraphicsContext.restoreGraphicsState()
 
 // 进度环：与菜单栏 UI 同构 —— 淡色轨道 + 实色进度（12 点起顺时针 72%，圆头）
 let radius: CGFloat = 235
