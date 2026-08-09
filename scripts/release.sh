@@ -39,7 +39,7 @@ fi
 echo "==> 运行测试"
 swift test 2>&1 | tail -1
 
-echo "==> 构建 Release（版本 $VERSION，构建号 $BUILD_NUMBER）"
+echo "==> 构建 Release（版本 ${VERSION}，构建号 ${BUILD_NUMBER}）"
 xcodegen generate >/dev/null
 xcodebuild -project Statly.xcodeproj -scheme Statly -configuration Release \
     -derivedDataPath .build/xcode \
@@ -75,7 +75,7 @@ hdiutil create -volname "Statly $VERSION" -srcfolder "$STAGING" \
 if [[ "$SIGNED" == "yes" ]]; then
     codesign --force --sign "$IDENTITY" "$DMG"
     if xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1; then
-        echo "==> 公证中（可能数分钟）"
+        echo "==> 公证中，可能需要数分钟"
         xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
         xcrun stapler staple "$DMG"
         echo "    公证完成并已 staple"
@@ -89,7 +89,7 @@ fi
 SHA="$(shasum -a 256 "$DMG" | awk '{print $1}')"
 SIZE="$(du -h "$DMG" | awk '{print $1}')"
 echo
-echo "==> 完成: $DMG（$SIZE）"
+echo "==> 完成: ${DMG}（${SIZE}）"
 echo "    SHA256: $SHA"
 
 if [[ "$PUBLISH" != "--publish" ]]; then
