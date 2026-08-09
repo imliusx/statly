@@ -28,7 +28,9 @@ enum StatusRenderer {
             }
         }
 
-        let block = groupBlock(module: module, labelStyle: labelStyle, graphic: content.graphic)
+        let block = groupBlock(
+            module: module, labelStyle: labelStyle, graphic: content.graphic, symbol: content.symbol
+        )
         return RenderOutput(
             key: "\(module.rawValue)-\(labelStyle.rawValue)-\(content.key)",
             content: .image(imageFrom(block)),
@@ -42,6 +44,8 @@ enum StatusRenderer {
         let graphic: Graphic
         let key: String
         let tooltip: String
+        /// 覆盖默认的模块图标（温度按冷热档位换水银柱高度）
+        var symbol: String?
     }
 
     private enum Graphic {
@@ -77,17 +81,22 @@ enum StatusRenderer {
             let text = Format.temperature(rounded)
             let tooltip = "\(temperature.source.displayName)\u{6e29}\u{5ea6} \(text) \u{b7} \u{5e73}\u{5747} \(Format.temperature(temperature.average))"
                 + " \u{b7} \(temperature.sensorCount) \u{4e2a}\u{4f20}\u{611f}\u{5668}"
+            let level = TemperatureLevel(celsius: rounded)
             switch style {
             case .text:
                 let graphic = Graphic.valueText(text)
-                return ModuleContent(graphic: graphic, key: graphicKey(graphic), tooltip: tooltip)
+                return ModuleContent(
+                    graphic: graphic, key: graphicKey(graphic), tooltip: tooltip, symbol: level.symbolName
+                )
             case .ring:
                 let graphic = Graphic.ring(
                     fraction: TemperatureSnapshot(celsius: rounded, average: 0, sensorCount: 0).heatFraction,
                     text: text,
                     widthTemplate: "88\u{b0}C"
                 )
-                return ModuleContent(graphic: graphic, key: graphicKey(graphic), tooltip: tooltip)
+                return ModuleContent(
+                    graphic: graphic, key: graphicKey(graphic), tooltip: tooltip, symbol: level.symbolName
+                )
             }
 
         case .network:
@@ -188,15 +197,16 @@ enum StatusRenderer {
         NSAttributedString(string: string, attributes: [.font: font, .foregroundColor: NSColor.black])
     }
 
-    /// SF Symbol 图标缓存（仅主线程访问）。
-    private static var iconCache: [ModuleID: NSImage] = [:]
+    /// SF Symbol 图标缓存，按符号名索引（温度会在多个符号间切换，不能按模块缓存）。
+    /// 仅主线程访问。
+    private static var iconCache: [String: NSImage] = [:]
 
-    private static func icon(for module: ModuleID) -> NSImage? {
-        if let cached = iconCache[module] { return cached }
+    private static func icon(named name: String) -> NSImage? {
+        if let cached = iconCache[name] { return cached }
         let configuration = NSImage.SymbolConfiguration(pointSize: 15, weight: .medium)
-        guard let image = NSImage(systemSymbolName: symbolName(module), accessibilityDescription: module.displayName)?
+        guard let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
             .withSymbolConfiguration(configuration) else { return nil }
-        iconCache[module] = image
+        iconCache[name] = image
         return image
     }
 
@@ -205,8 +215,10 @@ enum StatusRenderer {
     private typealias Block = (size: NSSize, draw: (NSRect) -> Void)
 
     /// 单模块块：[标签块] gap [图形块]，各自垂直居中。
-    private static func groupBlock(module: ModuleID, labelStyle: LabelStyle, graphic: Graphic) -> Block {
-        let label = labelBlock(module: module, style: labelStyle)
+    private static func groupBlock(
+        module: ModuleID, labelStyle: LabelStyle, graphic: Graphic, symbol: String? = nil
+    ) -> Block {
+        let label = labelBlock(module: module, style: labelStyle, symbol: symbol)
         let content = graphicBlock(graphic)
         let gap: CGFloat = (label.size.width > 0 && content.size.width > 0) ? 4 : 0
         let width = label.size.width + gap + content.size.width
@@ -239,7 +251,7 @@ enum StatusRenderer {
         return image
     }
 
-    private static func labelBlock(module: ModuleID, style: LabelStyle) -> Block {
+    private static func labelBlock(module: ModuleID, style: LabelStyle, symbol: String? = nil) -> Block {
         switch style {
         case .hidden:
             return (size: .zero, draw: { _ in })
@@ -253,7 +265,7 @@ enum StatusRenderer {
             )
 
         case .icon:
-            guard let image = icon(for: module) else {
+            guard let image = icon(named: symbol ?? symbolName(module)) else {
                 return labelBlock(module: module, style: .text)
             }
             let size = NSSize(width: ceil(image.size.width), height: ceil(image.size.height))

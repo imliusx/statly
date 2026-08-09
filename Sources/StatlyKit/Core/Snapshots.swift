@@ -82,6 +82,31 @@ public struct DiskSnapshot: Sendable {
     }
 }
 
+/// 温度档位。阈值按绝对温度划分：Apple Silicon 空载约 35–45°C，
+/// 满载约 70–90°C，接近 100°C 开始降频。
+public enum TemperatureLevel: Sendable {
+    case low
+    case medium
+    case high
+
+    public init(celsius: Double) {
+        switch celsius {
+        case ..<50: self = .low
+        case ..<80: self = .medium
+        default: self = .high
+        }
+    }
+
+    /// 对应的 SF Symbol，水银柱高度随档位变化
+    public var symbolName: String {
+        switch self {
+        case .low: return "thermometer.low"
+        case .medium: return "thermometer.medium"
+        case .high: return "thermometer.high"
+        }
+    }
+}
+
 public struct TemperatureSnapshot: Sendable {
     /// 读数来自哪个部件
     public let source: TemperatureSource
@@ -95,6 +120,9 @@ public struct TemperatureSnapshot: Sendable {
     public var heatFraction: Double {
         min(max((celsius - 30) / 70, 0), 1)
     }
+
+    /// 冷热档位，供状态栏温度计图标选择水银柱高度。
+    public var level: TemperatureLevel { TemperatureLevel(celsius: celsius) }
 
     public init(source: TemperatureSource = .cpu, celsius: Double, average: Double, sensorCount: Int) {
         self.source = source
