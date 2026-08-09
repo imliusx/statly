@@ -7,6 +7,10 @@ import SwiftUI
 @MainActor
 final class PopoverViewTests: XCTestCase {
     private func render(module: ModuleID, store: MetricStore, top: TopProcessStore) {
+        XCTAssertNotNil(image(module: module, store: store, top: top), "\(module.rawValue) 弹窗渲染失败")
+    }
+
+    private func image(module: ModuleID, store: MetricStore, top: TopProcessStore) -> Data? {
         let view = PopoverView(
             store: store,
             topStore: top,
@@ -15,7 +19,33 @@ final class PopoverViewTests: XCTestCase {
             onQuit: {}
         )
         let renderer = ImageRenderer(content: view)
-        XCTAssertNotNil(renderer.nsImage, "\(module.rawValue) 弹窗渲染失败")
+        renderer.scale = 1
+        return renderer.nsImage?.tiffRepresentation
+    }
+
+    /// 磁盘用量条必须真的画出来：早前用的 ProgressView 是 AppKit 控件包装，
+    /// 在非活跃窗口里会变灰、且完全不参与 SwiftUI 渲染，占用高低画出来一模一样。
+    func testDiskUsageBarReflectsUsage() {
+        func snapshot(free: UInt64) -> SystemSnapshot {
+            SystemSnapshot(disk: DiskSnapshot(
+                totalCapacity: 1_000_000_000_000,
+                freeCapacity: free,
+                readPerSecond: 0,
+                writePerSecond: 0
+            ))
+        }
+        let top = TopProcessStore()
+
+        let nearlyFull = MetricStore()
+        nearlyFull.apply(snapshot(free: 50_000_000_000))
+        let nearlyEmpty = MetricStore()
+        nearlyEmpty.apply(snapshot(free: 950_000_000_000))
+
+        guard let a = image(module: .disk, store: nearlyFull, top: top),
+              let b = image(module: .disk, store: nearlyEmpty, top: top) else {
+            return XCTFail("磁盘弹窗渲染失败")
+        }
+        XCTAssertNotEqual(a, b, "占用 95% 与 5% 应渲染出不同的用量条")
     }
 
     func testRendersAllModulesWithoutData() {

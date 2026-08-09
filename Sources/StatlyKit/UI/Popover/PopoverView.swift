@@ -128,11 +128,26 @@ struct PopoverView: View {
     private func diskSection(_ disk: DiskSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             header("磁盘", value: "可用 \(Format.diskFull(disk.freeCapacity))")
-            ProgressView(value: disk.usedFraction)
+            usageBar(disk.usedFraction)
             Text("共 \(Format.diskFull(disk.totalCapacity)) · 读 \(Format.fullRate(disk.readPerSecond)) · 写 \(Format.fullRate(disk.writePerSecond))")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    /// 自绘用量条（轨道 + 进度），与状态栏圆环同构。
+    /// 不用 ProgressView：AppKit 控件在非活跃窗口里会被系统画成灰色，
+    /// 弹窗刚弹出时窗口未成为 key，条会先灰后蓝。
+    private func usageBar(_ fraction: Double) -> some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.secondary.opacity(0.25))
+                Capsule()
+                    .fill(Color.accentColor)
+                    .frame(width: max(3, geometry.size.width * min(max(fraction, 0), 1)))
+            }
+        }
+        .frame(height: 6)
     }
 
     private var footer: some View {

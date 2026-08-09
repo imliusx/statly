@@ -197,6 +197,9 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
         popoverModule = module
         NSApplication.shared.activate(ignoringOtherApps: true)
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        // 让弹窗窗口立即成为 key：否则窗口处于非活跃态，里面的 AppKit 控件
+        // （按钮等）会被系统画成灰色，点一下才恢复正常配色。
+        popover.contentViewController?.view.window?.makeKey()
     }
 
     func popoverDidClose(_ notification: Notification) {
