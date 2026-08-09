@@ -1,4 +1,14 @@
-# Statly
+<div align="center">
+  <img src="docs/icon.png" width="128" alt="Statly">
+  <h1>Statly</h1>
+  <p><b>面向 macOS 的轻量系统监控工具</b></p>
+  <p>
+    <img src="https://img.shields.io/badge/macOS-13%2B-000000?logo=apple&logoColor=white" alt="macOS 13+">
+    <img src="https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white" alt="Swift 5.9">
+    <img src="https://img.shields.io/badge/体积-0.65%20MB-4c1" alt="体积 0.65 MB">
+    <img src="https://img.shields.io/badge/依赖-0-4c1" alt="零依赖">
+  </p>
+</div>
 
 Statly 是一款面向 macOS 用户的系统监控工具，使用 Swift 原生开发，常驻菜单栏实时显示 CPU、内存、温度、网络速率与磁盘五项指标，点击任一图标即可展开对应模块的详细数据。
 
