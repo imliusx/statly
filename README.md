@@ -1,188 +1,161 @@
 <div align="center">
   <img src="docs/icon.png" width="128" alt="Statly">
   <h1>Statly</h1>
-  <p><b>面向 macOS 的轻量系统监控工具</b></p>
+  <p><b>A lightweight system monitor for macOS</b></p>
   <p>
     <img src="https://img.shields.io/badge/macOS-13%2B-000000?logo=apple&logoColor=white" alt="macOS 13+">
     <img src="https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white" alt="Swift 5.9">
-    <img src="https://img.shields.io/badge/体积-0.71%20MB-4c1" alt="体积 0.71 MB">
-    <img src="https://img.shields.io/badge/依赖-0-4c1" alt="零依赖">
-    <img src="https://img.shields.io/badge/许可证-MIT-4c1" alt="MIT 许可证">
+    <img src="https://img.shields.io/badge/Size-0.71%20MB-4c1" alt="Size 0.71 MB">
+    <img src="https://img.shields.io/badge/Dependencies-0-4c1" alt="Zero dependencies">
+    <img src="https://img.shields.io/badge/License-MIT-4c1" alt="MIT License">
   </p>
+  <p><b>English</b> · <a href="README.zh-CN.md">简体中文</a></p>
 </div>
 
-Statly 是一款面向 macOS 用户的轻量化系统监控工具，使用 Swift 原生开发，常驻菜单栏实时显示 CPU、内存、温度、网络速率与磁盘五项指标，点击任一图标即可展开对应模块的详细数据。
+Statly is a lightweight system monitor for macOS that lives in the menu bar, showing CPU, memory, temperature, network rate, and disk usage in real time. Click any icon to open a detail panel for that module.
 
-项目以资源占用为首要约束进行设计：菜单栏内容由 AppKit 直接离屏绘制，SwiftUI 仅用于按需打开的详情面板与设置窗口，关闭即释放；全程单进程运行，不依赖任何第三方库，安装包体积 0.71 MB，无后台守护进程，无需申请任何系统权限。
+Designed with resource usage as the primary constraint: menu bar content is drawn off-screen with AppKit, SwiftUI is used only for the on-demand detail panels and settings window; a single process, zero third-party dependencies, a 0.71 MB bundle, no background daemons, and no system permissions required.
 
-![状态栏与详情弹窗](docs/statusbar.jpg)
+![Menu bar and detail popover](docs/statusbar.jpg)
 
-## 功能特点
+## Features
 
-**模块化设计** — 五个指标各占一个独立的菜单栏图标，可单独启用或停用，按住 ⌘ 拖动调整顺序，位置由系统持久化保存。
+- **Modular** — Each of the five metrics is an independent menu bar icon, individually enabled/disabled, reorderable by ⌘-dragging, with position persisted.
+- **Menu bar display** — Usage metrics shown as ring + percentage; network rate as up/down rows; values use a monospaced font with reserved width to avoid layout jitter.
+- **Configurable styles** — Usage style (ring + percentage / plain text) and label style (icon / vertical / horizontal text / hidden) freely combined, with live preview in the settings window.
+- **Dual temperature display** — The thermometer icon's mercury level changes across three tiers (<50°C / 50–80°C / ≥80°C); the ring fills by the reading, consistent with other modules.
+- **Selectable temperature source** — Switch between CPU (hottest die sensor) and battery; automatically disabled on desktops without a battery sensor.
+- **Detail panels** — Historical curves per module; CPU/memory list the top 5 processes, memory adds pressure state and breakdown, network adds local IP / gateway / DNS / public IP, disk adds a capacity bar and read/write rates.
+- **Hover tooltips** — Hover an icon in ring mode for the exact value.
+- **System integration** — Template images adapt to light/dark appearance; settings use system grouped cards and vibrancy; UI in Simplified Chinese.
+- **Low overhead** — One shared timer wake per sample cycle; no redraw when results are unchanged; sampling pauses while locked/asleep; process lists are collected only while the panel is open.
+- **No residue** — No Dock icon, no login-item daemon; uninstalling is just deleting the app and one config file.
 
-**菜单栏显示** — 占用类指标以圆环配合百分比呈现，圆环角度与读数严格对应；网络速率以上下行双行展示。数值采用等宽字体并按最大宽度预留空间，避免数值变化引起菜单栏布局抖动。
+## Installation
 
-**样式配置** — 占用样式（圆环+百分比 / 纯文本）与标签样式（图标 / 竖排 / 横排文本 / 隐藏）可自由组合，统一应用于全部模块，并在设置窗口内实时预览。
+Download the DMG from [Releases](https://github.com/imliusx/statly/releases) and drag Statly into the Applications folder. Requires **macOS 13 or later**.
 
-**温度双重呈现** — 温度计图标按冷热分三档改变水银柱高度（< 50°C / 50–80°C / ≥ 80°C），圆环按读数直接填充（30°C 填 30%、90°C 填 90%），口径与其他模块的圆环一致。
+> Not currently notarized by Apple. On first launch, right-click the app → Open, or run `xattr -d com.apple.quarantine /Applications/Statly.app`.
 
-**温度来源可选** — 温度模块可在 CPU 与电池之间切换：CPU 取晶粒传感器的最高值，反映实时负载；电池温度变化更平缓。台式机型无电池传感器时该选项自动禁用。
-
-**详情面板** — 展开后显示该模块的历史曲线。CPU 与内存模块附带占用最高的 5 个进程列表；内存模块显示内存压力状态及 App / 联动 / 已压缩分项；网络模块显示本机 IP / 网关 / DNS 与公网 IP；磁盘模块显示容量用量条与读写速率。
-
-**网络环境信息** — 网络详情面板在速率曲线下方列出当前连接：本机 IPv4 / IPv6、网关与 DNS，以及公网 IP 及其归属地与运营商。这些数据仅在面板打开期间采集，关闭即停止。
-
-**悬停提示** — 圆环模式下将指针停留于图标即可查看精确数值与完整速率，无需展开面板。
-
-**系统适配** — 菜单栏图标以模板图渲染，自动适配深色与浅色外观；设置窗口采用系统分组卡片与毛玻璃材质；界面为简体中文。
-
-**低开销实现** — 全部模块共享一次定时唤醒；渲染结果未发生变化时不触发菜单栏重绘；锁屏或显示器休眠期间暂停采样；进程列表仅在详情面板打开期间采集。
-
-**无残留** — 不显示 Dock 图标，不安装登录项守护进程，除手动检查更新与可关闭的公网 IP 查询外不产生网络请求。卸载仅需删除应用与一个配置文件。
-
-## 安装
-
-在 [Releases](https://github.com/imliusx/statly/releases) 页面下载 DMG，将 Statly 拖入「应用程序」文件夹。系统要求 **macOS 13 及以上**。
-
-> 当前版本未经 Apple 公证，首次打开需 **右键点击应用 → 打开 → 再次确认**，
-> 或在终端执行 `xattr -d com.apple.quarantine /Applications/Statly.app`。
-
-卸载：
+Uninstall:
 
 ```sh
 rm -rf /Applications/Statly.app
 defaults delete com.statly.app
 ```
 
-## 使用
+## Usage
 
-| 操作 | 效果 |
-|------|------|
-| 左键点击某个图标 | 展开**该模块**的详情面板 |
-| 悬停在图标上 | 气泡提示精确数值 |
-| 右键任一图标 | 设置 / 关于 / 检查更新 / 退出 |
-| ⌘ + 拖动 | 调整图标顺序 |
+| Action | Effect |
+|--------|--------|
+| Click an icon | Open that module's detail panel |
+| Hover an icon | Tooltip with the exact value |
+| Right-click any icon | Settings / About / Check for Updates / Quit |
+| ⌘ + drag | Reorder icons |
 
-各模块显示内容：
+| Module | Menu bar | Detail panel |
+|--------|----------|--------------|
+| CPU | Total usage | Usage curve, top 5 processes |
+| Memory | Used ratio | Usage curve, App / Wired / Compressed breakdown, top 5 processes |
+| Temperature | Hottest of selected source | Temperature curve, average and sensor count |
+| Network | Live up/down rates | Rate curves, local IP / gateway / DNS, public IP and ISP |
+| Disk | Used capacity ratio | Capacity bar, read/write rates |
 
-| 模块 | 菜单栏 | 详情面板 |
-|------|--------|----------|
-| CPU | 总占用率 | 占用曲线、CPU 占用最高的 5 个进程 |
-| 内存 | 已用占比 | 占用曲线、App / 联动 / 已压缩分项、内存占用最高的 5 个进程 |
-| 温度 | 所选来源的最高温度 | 温度曲线、平均值与传感器数量 |
-| 网络 | 实时上下行速率 | 上下行速率曲线、本机 IP / 网关 / DNS、公网 IP 与归属地 |
-| 磁盘 | 已用容量占比 | 容量用量条、读写速率 |
+## Settings
 
-## 设置
+Organized by module, with live style preview. Sample interval of 1 / 2 / 5 seconds, default 2. Launch at login is built on `SMAppService`; the public IP lookup can be disabled in settings — no outbound requests at all once disabled.
 
-设置窗口按模块划分侧边栏分区。样式调整可在「预览」区域实时查看效果。采样间隔提供 1 / 2 / 5 秒三档，默认 2 秒，为显示效果与功耗的平衡取值。开机自启基于系统的 `SMAppService` 实现，不安装额外的登录项守护进程。网络分区可关闭公网 IP 查询，关闭后不再产生任何对外请求。
+![Settings window](docs/settings.jpg)
 
-![设置窗口](docs/settings.jpg)
+## Performance
 
-## 性能
+Measured (Apple Silicon, all five modules, 2-second interval):
 
-以下均为实测数据（Apple Silicon，五模块全部启用，2 秒采样间隔）：
+| Metric | Target | Measured |
+|--------|--------|----------|
+| Bundle size | < 10 MB | **0.71 MB** |
+| Resident memory (RSS, panels closed) | < 35 MB | **32 MB** |
+| Timer wakes per sample cycle | 1 | **1** (all modules combined) |
+| Background processes / privileges / root | 0 | **0** |
+| Average CPU usage | < 0.5% | **0.42%** |
 
-| 指标 | 目标 | 实测 |
-|------|------|------|
-| 安装包体积 | < 10 MB | **0.71 MB** |
-| 常驻内存（面板关闭时 RSS） | < 35 MB | **32 MB** |
-| 每采样周期 timer 唤醒次数 | 1 次 | **1 次**（全模块合并采样） |
-| 后台进程 / 权限申请 / root | 0 | **0** |
-| 平均 CPU 占用 | < 0.5% | **0.42%** |
+Implementation constraints:
 
-对应的实现约束：
+- **Combined wake** — All modules share a single `DispatchSourceTimer`.
+- **Diff updates** — Skips the `NSStatusItem` call when output is unchanged from the previous cycle.
+- **Pause while hidden** — Sampling stops while locked/asleep; baselines reset on resume to avoid rate spikes.
+- **On-demand collection** — Process lists and network info are collected only while the panel is open.
+- **Temperature throttling** — Fixed 5-second sampling of a small sensor subset (4 CPU / 2 battery); per-sample cost drops from 16.7 ms to 3.6 ms, within 0.01°C of the full read.
 
-- **合并唤醒**：全部模块共享一个 `DispatchSourceTimer`，单次唤醒完成所有指标采集。定时器唤醒次数对功耗的影响大于单次唤醒的计算量。
-- **差异更新**：格式化结果与上一周期相同时，完全跳过 `NSStatusItem` 调用。
-- **不可见时暂停**：锁屏与显示器休眠期间停止采样，恢复后重置基线，避免出现速率尖峰。
-- **按需采集**：进程列表仅在详情面板打开期间运行独立定时器，面板关闭即停止并清空状态。网络环境信息（IP、网关、DNS）同样如此，固定 5 秒刷新一次。
-- **温度独立节流**：温度变化缓慢，固定 5 秒采集一次，且仅读取少量传感器（CPU 取 4 个、电池取 2 个）。实测该子集的最高值与全量读取平均相差 0.01°C，单次成本由 16.7 ms 降至 3.6 ms。
+CPU usage breakdown (from sampling profiler and controlled benchmarks):
 
-关于 CPU 占用：用采样分析器与受控基准逐项拆解后，构成如下（2 秒间隔、五模块）：
+| Source | Share |
+|--------|-------|
+| Inherent AppKit cost of updating menu bar items | ~0.23% |
+| Statly's own sampling and rendering | ~0.06% |
+| Rest (timers, event loop, etc.) | ~0.13% |
 
-| 来源 | 占比 |
-|------|------|
-| AppKit 更新菜单栏项的固有成本 | 约 0.23% |
-| Statly 自身的采样与渲染 | 约 0.06% |
-| 其余（定时器、事件循环等） | 约 0.13% |
+The 0.23% is the measured floor of a minimal control program (just swapping two menu bar item images every 2 seconds still costs 0.21–0.25%), so 0.3% is unreachable at a 2-second interval. The original < 0.3% target was revised to < 0.5%; at a 5-second interval it's ~0.2%.
 
-其中 0.23% 是用一个最小对照程序实测的下限：该程序只做「每 2 秒更换两个菜单栏项的预渲染图像」，不采样、不格式化、不绘制，仍需 0.21–0.25%。也就是说 0.3% 的目标在 2 秒间隔下不可达，瓶颈在系统而非本项目的代码。
+## Data sources
 
-原定目标为 < 0.3%，是在尚不了解系统固有成本时定下的，现已据实测修订为 < 0.5%。采样间隔调为 5 秒时约 0.2%。
+All data is gathered locally via public user-space APIs, no special privileges:
 
-## 数据来源
+| Metric | API |
+|--------|-----|
+| CPU | `host_processor_info` (per-core tick deltas) |
+| Memory | `host_statistics64`; pressure via `DISPATCH_SOURCE_TYPE_MEMORYPRESSURE` |
+| Network rate | `getifaddrs` (per-interface deltas, 32-bit counter wraparound handled) |
+| Network info | `SCDynamicStore`, `getifaddrs` |
+| Disk | `URL.resourceValues`, IOKit `IOBlockStorageDriver` |
+| Processes | libproc (`proc_listallpids` / `proc_pid_rusage`) |
+| Temperature | `IOHIDEventSystemClient` (**private API**) |
+| Public IP | `ipinfo.io` (**only outbound request**, can be disabled) |
 
-除温度与公网 IP 外，全部数据均通过用户态公开 API 在本机获取，不需要任何特殊权限：
+macOS has no public API for temperature; symbols are resolved dynamically via `dlsym`, and the module degrades to "unavailable" on failure without affecting the others. Because of the private API, Statly is distributed directly and not on the App Store. Wi-Fi SSID has required location services authorization since 10.15, so it's not shown — Statly asks for no permissions. The public IP is queried once when the network panel opens, cached until the local IP/gateway changes, and can be turned off at any time.
 
-| 指标 | API |
-|------|-----|
-| CPU | `host_processor_info`（每核 tick 差值） |
-| 内存 | `host_statistics64`；内存压力使用 `DISPATCH_SOURCE_TYPE_MEMORYPRESSURE` 事件驱动 |
-| 网络速率 | `getifaddrs`（按接口计算差值，处理 32 位计数器回绕） |
-| 网络环境 | `SCDynamicStore`（主接口、网关、DNS）、`getifaddrs`（本机地址） |
-| 磁盘 | `URL.resourceValues`（与 Finder 同口径）与 IOKit `IOBlockStorageDriver` |
-| 进程列表 | libproc（`proc_listallpids` 与 `proc_pid_rusage`） |
-| 温度 | `IOHIDEventSystemClient`（**私有接口**） |
-| 公网 IP | `ipinfo.io`（**唯一的对外请求**，可在设置中关闭） |
+## Building
 
-温度在 macOS 上没有公开 API。实现中通过 `dlsym` 动态解析符号，解析失败或读取不到数据时该模块自动降级为「不可用」，不影响其余模块运行。由于使用了私有接口，本项目仅采用直接分发方式，不上架 App Store。
-
-Wi-Fi 网络名称（SSID）自 macOS 10.15 起需要「位置服务」授权才能读取。本项目坚持不申请任何系统权限，因此不显示 Wi-Fi 相关信息。
-
-公网 IP 是本项目除检查更新外唯一的对外请求：仅在网络详情面板打开时查询一次，结果缓存至本机 IP 或网关发生变化（换 Wi-Fi、插拔网线、连 VPN），面板关闭即取消在途请求。该功能可在设置中关闭，关闭后不产生任何网络流量。
-
-## 构建
-
-环境要求 macOS 13+、Xcode 15+；生成 Xcode 工程需要 [XcodeGen](https://github.com/yonaskolb/XcodeGen)（`brew install xcodegen`）。
+Requires macOS 13+, Xcode 15+, and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`):
 
 ```sh
-make run        # 开发运行（SPM 可执行文件，迭代最快；此模式下开机自启不可用）
-make xcodeproj  # 生成 Statly.xcodeproj，用于在 Xcode 中调试完整应用
-make app        # Release 构建至 dist/Statly.app
+make run        # dev run (SPM, fastest iteration; launch-at-login unavailable in this mode)
+make xcodeproj  # generate Statly.xcodeproj for debugging the full app in Xcode
+make app        # Release build to dist/Statly.app
 ```
 
-`project.yml` 为 Xcode 工程的唯一事实来源，生成的 `.xcodeproj` 不纳入版本控制；`Package.swift` 用于快速开发运行。
+`project.yml` is the single source of truth for the Xcode project; the generated `.xcodeproj` is not committed.
 
 ```
 Sources/StatlyKit/
-├── App/        程序入口、AppCoordinator（采样循环、菜单栏、面板与设置的总协调）
-├── Core/       定时调度器、环形历史缓冲、等宽格式化、设置模型、更新检查
-├── Samplers/   五个指标采样器与进程列表采集
-└── UI/         NSStatusItem 渲染、SwiftUI 详情面板与设置窗口
+├── App/        Entry point, AppCoordinator (orchestrates sampling, menu bar, panels, settings)
+├── Core/       Timer scheduler, ring history buffer, monospaced formatting, settings model, update check
+├── Samplers/   The five metric samplers and process list collection
+└── UI/         NSStatusItem rendering, SwiftUI detail panels and settings window
 ```
 
-## 发布
+## Releasing
 
 ```sh
-scripts/release.sh 0.1.0             # 构建、签名并生成 DMG 至 dist/
-scripts/release.sh 0.1.0 --publish   # 同上，并创建 tag 与 GitHub Release
+scripts/release.sh 0.1.0             # build, sign, and produce a DMG in dist/
+scripts/release.sh 0.1.0 --publish   # same, plus tag and GitHub Release
 ```
 
-签名与公证根据本机具备的条件自动选择策略，脚本无需修改：
+Signing strategy is picked automatically based on the local machine: Developer ID + notarytool credentials → signed, notarized, and stapled; Developer ID only → signed, skipping notarization; dev certificate or none → ad-hoc signed.
 
-| 本机条件 | 结果 |
-|---|---|
-| Developer ID 证书 + notarytool 凭据 | 正式签名、公证并 staple，用户可直接双击打开 |
-| 具备 Developer ID 证书，未配置公证凭据 | 正式签名，跳过公证 |
-| 仅有开发证书或无证书 | ad-hoc 签名，首次打开需右键 → 打开 |
-
-配置公证凭据（需付费 Apple Developer 账号）：
+To configure notary credentials (requires a paid Apple Developer account):
 
 ```sh
 xcrun notarytool store-credentials statly-notary \
-    --apple-id <AppleID> --team-id <团队ID> --password <应用专用密码>
+    --apple-id <AppleID> --team-id <TeamID> --password <app-specific password>
 ```
 
-## 路线图
+## Roadmap
 
-- ✅ 五个模块完整链路：采样 → 菜单栏 → 详情面板 → 设置
-- ✅ 进程列表、检查更新、DMG 发布流程
-- ⏳ 菜单栏渲染缓存，将 CPU 占用降至 0.3% 目标以内
-- ⏳ Developer ID 签名与公证
-- 📋 待办：风扇转速、GPU、电池、阈值告警、多语言、Homebrew cask
+- ✅ Full pipeline for all five modules, process lists, update check, DMG release flow
+- ⏳ Menu bar render caching, Developer ID signing and notarization
+- 📋 Planned: fan speed, GPU, battery, threshold alerts, localization, Homebrew cask
 
-## 许可证
+## License
 
 [MIT](LICENSE) © 2026 liusx
