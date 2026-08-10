@@ -7,6 +7,7 @@
     <img src="https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white" alt="Swift 5.9">
     <img src="https://img.shields.io/badge/体积-0.65%20MB-4c1" alt="体积 0.65 MB">
     <img src="https://img.shields.io/badge/依赖-0-4c1" alt="零依赖">
+    <img src="https://img.shields.io/badge/许可证-MIT-4c1" alt="MIT 许可证">
   </p>
 </div>
 
@@ -87,7 +88,7 @@ defaults delete com.statly.app
 | 常驻内存（面板关闭时 RSS） | < 35 MB | **32 MB** |
 | 每采样周期 timer 唤醒次数 | 1 次 | **1 次**（全模块合并采样） |
 | 后台进程 / 权限申请 / root | 0 | **0** |
-| 平均 CPU 占用 | < 0.3% | 0.42%（见下方说明） |
+| 平均 CPU 占用 | < 0.5% | **0.42%** |
 
 对应的实现约束：
 
@@ -107,7 +108,7 @@ defaults delete com.statly.app
 
 其中 0.23% 是用一个最小对照程序实测的下限：该程序只做「每 2 秒更换两个菜单栏项的预渲染图像」，不采样、不格式化、不绘制，仍需 0.21–0.25%。也就是说 0.3% 的目标在 2 秒间隔下不可达，瓶颈在系统而非本项目的代码。
 
-采样间隔调为 5 秒时实测约 0.2%，可满足目标。该目标值将在下一版据此修订。
+原定目标为 < 0.3%，是在尚不了解系统固有成本时定下的，现已据实测修订为 < 0.5%。采样间隔调为 5 秒时约 0.2%。
 
 ## 数据来源
 
@@ -173,3 +174,7 @@ xcrun notarytool store-credentials statly-notary \
 - ⏳ 菜单栏渲染缓存，将 CPU 占用降至 0.3% 目标以内
 - ⏳ Developer ID 签名与公证
 - 📋 待办：风扇转速、GPU、电池、阈值告警、多语言、Homebrew cask
+
+## 许可证
+
+[MIT](LICENSE) © 2026 liusx

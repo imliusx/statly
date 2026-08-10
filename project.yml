@@ -24,7 +24,7 @@ targets:
         LSMinimumSystemVersion: "13.0"
         LSUIElement: true
         NSPrincipalClass: NSApplication
-        NSHumanReadableCopyright: "Copyright © 2026"
+        NSHumanReadableCopyright: "Copyright © 2026 liusx. MIT License."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.statly.app
