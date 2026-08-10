@@ -10,6 +10,7 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
     private let samplers = SamplerSet()
     private let scheduler = Scheduler()
     private let topStore = TopProcessStore()
+    private let networkInfoStore = NetworkInfoStore()
 
     private var controllers: [ModuleID: StatusItemController] = [:]
     private let popover = NSPopover()
@@ -192,9 +193,17 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
         } else {
             topStore.stop()
         }
+        // 网络环境信息（含唯一的对外请求）同理，只在网络详情打开期间采集
+        if module == .network {
+            networkInfoStore.start(publicIPEnabled: settings.showPublicIP)
+        } else {
+            networkInfoStore.stop()
+        }
         let view = PopoverView(
             store: store,
             topStore: topStore,
+            networkInfoStore: networkInfoStore,
+            settings: settings,
             module: module,
             onOpenSettings: { [weak self] in
                 self?.popover.performClose(nil)
@@ -218,6 +227,7 @@ final class AppCoordinator: NSObject, NSPopoverDelegate {
         popover.contentViewController = nil
         popoverModule = nil
         topStore.stop()
+        networkInfoStore.stop()
     }
 
     // MARK: - 菜单与设置窗口

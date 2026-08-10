@@ -228,6 +228,16 @@ struct SettingsDetailView: View {
             }
         }
 
+        if module == .network {
+            Section {
+                Toggle("显示公网 IP", isOn: $settings.showPublicIP)
+            } header: {
+                Text("公网 IP")
+            } footer: {
+                footnote("打开网络详情面板时向 ipinfo.io 查询一次，结果缓存至网络环境变化（换 Wi-Fi、插拔网线、连 VPN）。这是本 app 除检查更新外唯一的对外请求，关闭后一个字节都不发。")
+            }
+        }
+
         if settings.enabledModules.contains(module), !unsupported {
             Section {
                 previewStrip([module])
@@ -277,7 +287,7 @@ struct SettingsDetailView: View {
             return [
                 ("状态栏", "实时上行、下行速率（两行）"),
                 ("悬停", "完整速率"),
-                ("详情", "上下行速率曲线"),
+                ("详情", "上下行速率曲线、本机 IP / 网关 / DNS、公网 IP 与归属地"),
             ]
         case .disk:
             return [
@@ -329,7 +339,7 @@ struct SettingsDetailView: View {
                 Link("GitHub", destination: UpdateChecker.repositoryURL)
             }
         } footer: {
-            footnote("无后台进程、无权限申请、零第三方依赖。全部指标取自用户态公开 API。")
+            footnote("无后台进程、无权限申请、零第三方依赖。指标全部取自用户态公开 API；除检查更新与可关闭的公网 IP 查询外，不产生任何网络请求。")
         }
         .alert("检查更新", isPresented: updateAlertBinding) {
             if case .newVersion = updateOutcome {

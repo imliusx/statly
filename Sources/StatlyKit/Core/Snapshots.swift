@@ -134,6 +134,75 @@ public struct TemperatureSnapshot: Sendable {
     }
 }
 
+// MARK: - 网络环境信息
+//
+// 以下类型**不属于** SystemSnapshot：那是常驻采样每个周期的产物，而这些是慢变量，
+// 只在网络详情面板打开期间采集（轻量化守则"按需分级"，同 TopProcessStore）。
+
+/// 本机网络环境。全部取自免权限的用户态 API。
+public struct NetworkInfo: Sendable, Equatable {
+    /// 主接口名，如 en0
+    public var interfaceName: String?
+    public var ipv4: String?
+    /// 已排除 fe80:: 链路本地地址
+    public var ipv6: String?
+    public var router: String?
+    public var dns: [String]
+
+    public init(
+        interfaceName: String? = nil,
+        ipv4: String? = nil,
+        ipv6: String? = nil,
+        router: String? = nil,
+        dns: [String] = []
+    ) {
+        self.interfaceName = interfaceName
+        self.ipv4 = ipv4
+        self.ipv6 = ipv6
+        self.router = router
+        self.dns = dns
+    }
+
+    /// 公网 IP 的缓存键：本地网络环境没变就没必要重新查。
+    /// 换 Wi-Fi、插拔网线、连 VPN 都会改变其中之一。
+    public var fingerprint: String {
+        "\(ipv4 ?? "-")|\(router ?? "-")"
+    }
+}
+
+/// 公网 IP 查询结果。
+public struct PublicIP: Sendable, Equatable {
+    public let address: String
+    public let city: String?
+    public let region: String?
+    public let country: String?
+    /// 运营商（ipinfo 的 org 字段，形如 "AS4134 Chinanet"）
+    public let org: String?
+
+    public init(address: String, city: String? = nil, region: String? = nil, country: String? = nil, org: String? = nil) {
+        self.address = address
+        self.city = city
+        self.region = region
+        self.country = country
+        self.org = org
+    }
+
+    /// "上海 · Chinanet"，两项都没有则为 nil。
+    public var location: String? {
+        let parts = [city, org].compactMap { $0 }.filter { !$0.isEmpty }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+}
+
+/// 公网 IP 的查询状态。disabled 表示用户在设置里关掉了该功能。
+public enum PublicIPState: Sendable, Equatable {
+    case disabled
+    case idle
+    case loading
+    case loaded(PublicIP)
+    case failed(String)
+}
+
 /// 一次采样周期产出的完整快照。未启用或首次采样无差值的模块为 nil。
 public struct SystemSnapshot: Sendable {
     public var cpu: CPUSnapshot?

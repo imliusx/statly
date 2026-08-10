@@ -3,8 +3,15 @@ import Charts
 
 /// 点击状态栏后的单模块详情弹窗。仅在弹窗存在期间参与渲染，关闭即随 hosting controller 释放。
 struct PopoverView: View {
+    /// 网络信息键值行的标签列宽，容得下最长的 "IPv6"
+    private static let infoLabelWidth: CGFloat = 40
+    /// 遮住敏感值时的占位。定长，免得点数长短反过来泄露原值有多长。
+    private static let maskPlaceholder = "••••••••"
+
     @ObservedObject var store: MetricStore
     @ObservedObject var topStore: TopProcessStore
+    @ObservedObject var networkInfoStore: NetworkInfoStore
+    @ObservedObject var settings: AppSettings
     let module: ModuleID
     var onOpenSettings: () -> Void
     var onQuit: () -> Void
@@ -155,6 +162,65 @@ struct PopoverView: View {
                     .foregroundStyle(.green)
             }
             rateChart(rx: store.history(.networkRx), tx: store.history(.networkTx))
+            Divider()
+            networkInfoRows
+        }
+    }
+
+    /// 网络环境信息。数据只在本面板打开期间采集，关闭即清空（见 NetworkInfoStore）。
+    @ViewBuilder
+    private var networkInfoRows: some View {
+        let info = networkInfoStore.info
+
+        if let ipv4 = info.ipv4 {
+            infoRow("本机", ipv4)
+        }
+        if let ipv6 = info.ipv6 {
+            infoRow("IPv6", sensitive(ipv6))
+        }
+        if let router = info.router {
+            infoRow("网关", router)
+        }
+        if !info.dns.isEmpty {
+            infoRow("DNS", info.dns.joined(separator: ", "))
+        }
+        publicIPRows
+
+        // 采集完成前（面板刚弹出的第一帧）不至于是一片空白
+        if info.ipv4 == nil, info.router == nil, info.dns.isEmpty {
+            Text("读取网络信息…")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    @ViewBuilder
+    private var publicIPRows: some View {
+        switch networkInfoStore.publicIP {
+        case .disabled:
+            EmptyView()
+        case .idle, .loading:
+            infoRow("公网", "查询中…", monospaced: false, muted: true)
+        case .loaded(let ip):
+            infoRow("公网", sensitive(ip.address))
+            if let location = ip.location {
+                // 归属地是这一块里用户最想看的一行，与其他行同等份量呈现，不做灰色附注。
+                // 平时用比例字体（自然语言更好读、同宽度能多放字），但遮挡时切回等宽：
+                // 比例字体里的 • 明显更小更细，与上面几行的点对不齐。
+                infoRow("位置", sensitive(location), monospaced: settings.maskSensitiveInfo)
+            }
+        case .failed(let reason):
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                infoLabel("公网")
+                Text("查询失败")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button("重试") { networkInfoStore.retryPublicIP() }
+                    .buttonStyle(.link)
+                    .font(.caption)
+                    .help(reason)
+                Spacer(minLength: 0)
+            }
         }
     }
 
@@ -183,12 +249,28 @@ struct PopoverView: View {
         .frame(height: 6)
     }
 
+    /// 能定位到个人的值：公网 IP、归属地、全球 IPv6 地址。
+    /// 本机 IPv4 与网关是 RFC1918 私有段（192.168.x.x 这类），对外说明不了任何事，不参与遮挡。
+    private func sensitive(_ value: String) -> String {
+        settings.maskSensitiveInfo ? Self.maskPlaceholder : value
+    }
+
     private var footer: some View {
         HStack(spacing: 2) {
             Text("Statly")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
             Spacer()
+            // 只有网络面板有可遮的内容。放页脚而不是挂在某一行后面：
+            // 公网 IP 查询失败或被关掉时那行不存在，眼睛挂在上面就会连同消失，
+            // 而 IPv6 仍需要能被解除遮挡。
+            if module == .network {
+                FooterIconButton(
+                    symbol: settings.maskSensitiveInfo ? "lock" : "lock.open",
+                    help: settings.maskSensitiveInfo ? "显示公网 IP、位置与 IPv6" : "隐藏公网 IP、位置与 IPv6",
+                    action: { settings.maskSensitiveInfo.toggle() }
+                )
+            }
             FooterIconButton(symbol: "gearshape", help: "设置…", action: onOpenSettings)
             FooterIconButton(symbol: "power", help: "退出 Statly", action: onQuit)
         }
@@ -201,6 +283,28 @@ struct PopoverView: View {
             Text(title).font(.headline)
             Spacer()
             Text(value).font(.system(.body, design: .monospaced))
+        }
+    }
+
+    /// 键值行的定宽标签列，保证各行的值左对齐。
+    private func infoLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(width: Self.infoLabelWidth, alignment: .leading)
+    }
+
+    /// 网络信息用的键值行。值超宽时中间省略，避免撑破 300pt 的面板。
+    /// IP 类用等宽（对齐好读），归属地这类自然语言用比例字体（同宽度能多放字）。
+    private func infoRow(_ label: String, _ value: String, monospaced: Bool = true, muted: Bool = false) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            infoLabel(label)
+            Text(value)
+                .font(monospaced ? .system(.caption, design: .monospaced) : .caption)
+                .foregroundStyle(muted ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer(minLength: 0)
         }
     }
 

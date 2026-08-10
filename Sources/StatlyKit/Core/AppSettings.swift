@@ -15,6 +15,8 @@ public final class AppSettings: ObservableObject {
         static let statusStyle = "statusStyle"
         static let labelStyle = "labelStyle"
         static let temperatureSource = "temperatureSource"
+        static let showPublicIP = "showPublicIP"
+        static let maskSensitiveInfo = "maskSensitiveInfo"
         static let schemaVersion = "schemaVersion"
     }
 
@@ -41,6 +43,18 @@ public final class AppSettings: ObservableObject {
     /// 全局统一的标签样式，默认图标。
     @Published public var labelStyle: LabelStyle {
         didSet { defaults.set(labelStyle.rawValue, forKey: Key.labelStyle) }
+    }
+
+    /// 网络详情面板是否显示公网 IP，默认开启。
+    /// 这是全 app 除"检查更新"外唯一的对外请求，关掉后一个字节都不发。
+    @Published public var showPublicIP: Bool {
+        didSet { defaults.set(showPublicIP, forKey: Key.showPublicIP) }
+    }
+
+    /// 是否遮住网络面板里能定位到个人的字段（公网 IP、归属地、全球 IPv6）。
+    /// 由面板页脚的锁按钮切换；持久化保存，方便经常录屏、共享屏幕的人一直开着。
+    @Published public var maskSensitiveInfo: Bool {
+        didSet { defaults.set(maskSensitiveInfo, forKey: Key.maskSensitiveInfo) }
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -78,6 +92,11 @@ public final class AppSettings: ObservableObject {
         } else {
             self.temperatureSource = .cpu
         }
+        // 默认开启：必须查 object(forKey:) 而不是 bool(forKey:)，
+        // 后者在键不存在时返回 false，会让默认值永远生效不了
+        self.showPublicIP = defaults.object(forKey: Key.showPublicIP) as? Bool ?? true
+        // 默认不遮：打开面板通常就是为了看这些值
+        self.maskSensitiveInfo = defaults.bool(forKey: Key.maskSensitiveInfo)
         // 清理早期版本遗留的设置键
         defaults.removeObject(forKey: "cpuStyle")
         defaults.removeObject(forKey: "mergeModules")
