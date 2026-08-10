@@ -116,9 +116,11 @@ public struct TemperatureSnapshot: Sendable {
     public let average: Double
     public let sensorCount: Int
 
-    /// 映射到 0...1，供状态栏圆环使用。30°C 以下算凉，100°C 视为满。
+    /// 映射到 0...1，供状态栏圆环使用。与其他模块的圆环口径一致：读数直接当百分比，
+    /// 30°C 填 30%、90°C 填 90%、100°C 及以上填满。不设温度下限，
+    /// 否则常见温区（30–45°C）会几乎看不出填充。
     public var heatFraction: Double {
-        min(max((celsius - 30) / 70, 0), 1)
+        min(max(celsius / 100, 0), 1)
     }
 
     /// 冷热档位，供状态栏温度计图标选择水银柱高度。

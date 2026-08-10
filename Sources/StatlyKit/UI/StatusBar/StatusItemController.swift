@@ -22,6 +22,7 @@ final class StatusItemController: NSObject {
     private let item: NSStatusItem
     private var lastKey: String?
     private var lastTooltip: String?
+    private var lastLength: CGFloat?
 
     var onLeftClick: ((NSStatusBarButton) -> Void)?
     var onRightClick: (() -> Void)?
@@ -50,14 +51,22 @@ final class StatusItemController: NSObject {
         guard let button = item.button else { return }
         switch output.content {
         case .text(let text):
-            button.image = nil
+            if button.image != nil { button.image = nil }
             button.title = text
-            item.length = NSStatusItem.variableLength
+            setLength(NSStatusItem.variableLength)
         case .image(let image):
-            button.title = ""
+            if !button.title.isEmpty { button.title = "" }
             button.image = image
-            item.length = image.size.width + Self.horizontalPadding
+            setLength(image.size.width + Self.horizontalPadding)
         }
+    }
+
+    /// 宽度未变就不要碰 `length`：赋值会触发整条菜单栏重新布局，
+    /// 而绝大多数更新只是图像内容变了、宽度没变（读数区按模板定宽）。
+    private func setLength(_ length: CGFloat) {
+        guard length != lastLength else { return }
+        lastLength = length
+        item.length = length
     }
 
     func showMenu(_ menu: NSMenu) {
