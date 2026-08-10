@@ -174,12 +174,14 @@ enum StatusRenderer {
         }
     }
 
-    private static func symbolName(_ module: ModuleID) -> String {
+    /// 标签图标。网络返回 nil：双行速率的 ↓↑ 已经说明了这是网速，再挂一个地球图标
+    /// 只是重复信息，却要多占 23pt（19pt 图标 + 4pt 间距）——网络本来就是最宽的模块。
+    private static func symbolName(_ module: ModuleID) -> String? {
         switch module {
         case .cpu: return "cpu"
         case .memory: return "memorychip"
         case .temperature: return "thermometer"
-        case .network: return "network"
+        case .network: return nil
         case .disk: return "internaldrive"
         }
     }
@@ -265,7 +267,11 @@ enum StatusRenderer {
             )
 
         case .icon:
-            guard let image = icon(named: symbol ?? symbolName(module)) else {
+            // 没有图标的模块（网络）当作"隐藏"处理，标签块不占位，groupBlock 的间距也一并归零
+            guard let name = symbol ?? symbolName(module) else {
+                return labelBlock(module: module, style: .hidden)
+            }
+            guard let image = icon(named: name) else {
                 return labelBlock(module: module, style: .text)
             }
             let size = NSSize(width: ceil(image.size.width), height: ceil(image.size.height))
