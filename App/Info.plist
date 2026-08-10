@@ -27,7 +27,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2026</string>
+	<string>Copyright © 2026 liusx. MIT License.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>
