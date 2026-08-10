@@ -5,7 +5,7 @@
   <p>
     <img src="https://img.shields.io/badge/macOS-13%2B-000000?logo=apple&logoColor=white" alt="macOS 13+">
     <img src="https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white" alt="Swift 5.9">
-    <img src="https://img.shields.io/badge/体积-0.65%20MB-4c1" alt="体积 0.65 MB">
+    <img src="https://img.shields.io/badge/体积-0.71%20MB-4c1" alt="体积 0.71 MB">
     <img src="https://img.shields.io/badge/依赖-0-4c1" alt="零依赖">
     <img src="https://img.shields.io/badge/许可证-MIT-4c1" alt="MIT 许可证">
   </p>
@@ -13,7 +13,7 @@
 
 Statly 是一款面向 macOS 用户的轻量化系统监控工具，使用 Swift 原生开发，常驻菜单栏实时显示 CPU、内存、温度、网络速率与磁盘五项指标，点击任一图标即可展开对应模块的详细数据。
 
-项目以资源占用为首要约束进行设计：菜单栏内容由 AppKit 直接离屏绘制，SwiftUI 仅用于按需打开的详情面板与设置窗口，关闭即释放；全程单进程运行，不依赖任何第三方库，安装包体积 0.65 MB，无后台守护进程，无需申请任何系统权限。
+项目以资源占用为首要约束进行设计：菜单栏内容由 AppKit 直接离屏绘制，SwiftUI 仅用于按需打开的详情面板与设置窗口，关闭即释放；全程单进程运行，不依赖任何第三方库，安装包体积 0.71 MB，无后台守护进程，无需申请任何系统权限。
 
 ![状态栏与详情弹窗](docs/statusbar.jpg)
 
@@ -86,7 +86,7 @@ defaults delete com.statly.app
 
 | 指标 | 目标 | 实测 |
 |------|------|------|
-| 安装包体积 | < 10 MB | **0.65 MB** |
+| 安装包体积 | < 10 MB | **0.71 MB** |
 | 常驻内存（面板关闭时 RSS） | < 35 MB | **32 MB** |
 | 每采样周期 timer 唤醒次数 | 1 次 | **1 次**（全模块合并采样） |
 | 后台进程 / 权限申请 / root | 0 | **0** |
