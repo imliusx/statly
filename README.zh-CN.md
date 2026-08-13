@@ -1,3 +1,9 @@
+<p align="center">
+    <a href="https://linux.do" alt="LINUX DO">
+        <img
+            src="https://img.shields.io/badge/LINUX-DO-FFB003.svg?logo=data:image/svg%2bxml;base64,DQo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiPjxwYXRoIGQ9Ik00Ni44Mi0uMDU1aDYuMjVxMjMuOTY5IDIuMDYyIDM4IDIxLjQyNmM1LjI1OCA3LjY3NiA4LjIxNSAxNi4xNTYgOC44NzUgMjUuNDV2Ni4yNXEtMi4wNjQgMjMuOTY4LTIxLjQzIDM4LTExLjUxMiA3Ljg4NS0yNS40NDUgOC44NzRoLTYuMjVxLTIzLjk3LTIuMDY0LTM4LjAwNC0yMS40M1EuOTcxIDY3LjA1Ni0uMDU0IDUzLjE4di02LjQ3M0MxLjM2MiAzMC43ODEgOC41MDMgMTguMTQ4IDIxLjM3IDguODE3IDI5LjA0NyAzLjU2MiAzNy41MjcuNjA0IDQ2LjgyMS0uMDU2IiBzdHlsZT0ic3Ryb2tlOm5vbmU7ZmlsbC1ydWxlOmV2ZW5vZGQ7ZmlsbDojZWNlY2VjO2ZpbGwtb3BhY2l0eToxIi8+PHBhdGggZD0iTTQ3LjI2NiAyLjk1N3EyMi41My0uNjUgMzcuNzc3IDE1LjczOGE0OS43IDQ5LjcgMCAwIDEgNi44NjcgMTAuMTU3cS00MS45NjQuMjIyLTgzLjkzIDAgOS43NS0xOC42MTYgMzAuMDI0LTI0LjM4N2E2MSA2MSAwIDAgMSA5LjI2Mi0xLjUwOCIgc3R5bGU9InN0cm9rZTpub25lO2ZpbGwtcnVsZTpldmVub2RkO2ZpbGw6IzE5MTkxOTtmaWxsLW9wYWNpdHk6MSIvPjxwYXRoIGQ9Ik03Ljk4IDcwLjkyNmMyNy45NzctLjAzNSA1NS45NTQgMCA4My45My4xMTNRODMuNDI2IDg3LjQ3MyA2Ni4xMyA5NC4wODZxLTE4LjgxIDYuNTQ0LTM2LjgzMi0xLjg5OC0xNC4yMDMtNy4wOS0yMS4zMTctMjEuMjYyIiBzdHlsZT0ic3Ryb2tlOm5vbmU7ZmlsbC1ydWxlOmV2ZW5vZGQ7ZmlsbDojZjlhZjAwO2ZpbGwtb3BhY2l0eToxIi8+PC9zdmc+" /></a>
+</p>
+
 <div align="center">
   <img src="docs/icon.png" width="128" alt="Statly">
   <h1>Statly</h1>
@@ -97,64 +103,9 @@ CPU 占用构成（采样分析器与受控基准实测）：
 
 0.23% 是最小对照程序的实测下限（仅每 2 秒更换两个菜单栏项图像，仍需 0.21–0.25%），即 0.3% 在 2 秒间隔下不可达。原定 < 0.3% 目标据此修订为 < 0.5%；5 秒间隔时约 0.2%。
 
-## 数据来源
+## 社区
 
-全部数据通过用户态公开 API 在本机获取，无需特殊权限：
-
-| 指标 | API |
-|------|-----|
-| CPU | `host_processor_info`（每核 tick 差值） |
-| 内存 | `host_statistics64`；内存压力用 `DISPATCH_SOURCE_TYPE_MEMORYPRESSURE` 事件驱动 |
-| 网络速率 | `getifaddrs`（按接口差值，处理 32 位计数器回绕） |
-| 网络环境 | `SCDynamicStore`、`getifaddrs` |
-| 磁盘 | `URL.resourceValues`、IOKit `IOBlockStorageDriver` |
-| 进程列表 | libproc（`proc_listallpids` / `proc_pid_rusage`） |
-| 温度 | `IOHIDEventSystemClient`（**私有接口**） |
-| 公网 IP | `ipinfo.io`（**唯一对外请求**，可关闭） |
-
-温度在 macOS 上没有公开 API，通过 `dlsym` 动态解析符号，失败时该模块降级为「不可用」，不影响其余模块；因使用私有接口，本项目仅直接分发，不上架 App Store。Wi-Fi SSID 自 10.15 起需位置授权，本项目不申请权限，故不显示。公网 IP 仅在网络面板打开时查询一次，结果缓存至本机 IP / 网关变化，可随时关闭。
-
-## 构建
-
-需要 macOS 13+、Xcode 15+ 与 [XcodeGen](https://github.com/yonaskolb/XcodeGen)（`brew install xcodegen`）：
-
-```sh
-make run        # 开发运行（SPM，迭代最快；此模式下开机自启不可用）
-make xcodeproj  # 生成 Statly.xcodeproj，用于 Xcode 调试完整应用
-make app        # Release 构建至 dist/Statly.app
-```
-
-`project.yml` 是 Xcode 工程的唯一事实来源，`.xcodeproj` 不入版本控制。
-
-```
-Sources/StatlyKit/
-├── App/        程序入口、AppCoordinator（采样循环、菜单栏、面板与设置的总协调）
-├── Core/       定时调度器、环形历史缓冲、等宽格式化、设置模型、更新检查
-├── Samplers/   五个指标采样器与进程列表采集
-└── UI/         NSStatusItem 渲染、SwiftUI 详情面板与设置窗口
-```
-
-## 发布
-
-```sh
-scripts/release.sh 0.1.0             # 构建、签名并生成 DMG 至 dist/
-scripts/release.sh 0.1.0 --publish   # 同上，并创建 tag 与 GitHub Release
-```
-
-签名策略按本机条件自动选择：Developer ID + 公证凭据 → 签名、公证并 staple；仅有 Developer ID → 签名跳过公证；仅有开发证书或无证书 → ad-hoc 签名。
-
-配置公证凭据（需付费 Apple Developer 账号）：
-
-```sh
-xcrun notarytool store-credentials statly-notary \
-    --apple-id <AppleID> --team-id <团队ID> --password <应用专用密码>
-```
-
-## 路线图
-
-- ✅ 五个模块完整链路、进程列表、检查更新、DMG 发布流程
-- ⏳ 菜单栏渲染缓存、Developer ID 签名与公证
-- 📋 待办：风扇转速、GPU、电池、阈值告警、多语言、Homebrew cask
+感谢 [LINUX DO](https://linux.do/) 提供友好的技术交流与开源分享社区。
 
 ## 许可证
 
